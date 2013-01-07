@@ -7,7 +7,7 @@ for more, start at [haskell.org](http://haskell.org).
 
 ## Books 
 
-- [Haskell Wiki Bool](http://en.wikibooks.org/wiki/Haskell) 
+- [Haskell Wiki Book](http://en.wikibooks.org/wiki/Haskell) 
 
 - [Real World Haskell](http://www.realworldhaskell.org)
   by Bryan O' Sullivan, John Goerzen, and Don Stewart
@@ -18,11 +18,12 @@ for more, start at [haskell.org](http://haskell.org).
 - [Programming in Haskell](http://www.cs.nott.ac.uk/~gmh/book.html) by
   Graham Hutton
 
-## Tutorials
-
 - [Learn You a Haskell](http://learnyouahaskell.com/) by Miran Lipovača
 
+## Tutorials
+
 - [Monad Tutorial](http://www.cs.nott.ac.uk/~gmh/monads) by Graham Hutton
+
 
 ## Courses
 

@@ -1,5 +1,5 @@
 ---
-title: Higher-Order Programming I 
+title: Higher-Order Functions I 
 ---
 
 > import Data.Char

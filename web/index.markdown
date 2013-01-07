@@ -6,18 +6,13 @@ title: Home
 
 *Instructor:* Ranjit Jhala `(jhala+230@cs.ucsd.edu)`
 
-*TA:* Patrick Rondon `(prondon+230@cs.ucsd.edu)`
-
-
 ## Co-ordinates 
 
-*Lectures:* M-W 5:00 to 6:20pm in WLH 2205 
+*Lectures:* M-W 6:30 to 7:50pm in **SOLIS 111**
 
 *Office Hours* :
 
-- Ranjit  : TT 5:00-6:00p
-- Patrick : MW 6:30-7:30p 
-
+- Ranjit  : MW 5:00-6:00p
 
 ## Description
 
