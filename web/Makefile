@@ -1,3 +1,7 @@
+
+SITEUSER=rjhala@csefast.ucsd.edu
+SITEPATH=/net/cs/htdocs/classes/wi13/cse230-a/
+
 all:
 	./hakyll rebuild
 
@@ -11,6 +15,6 @@ update:
 	cp css/syntax-rj.css _site/css/syntax.css
 	cp lectures/*.lhs _site/lectures/
 	cp homeworks/*.lhs _site/homeworks/
-	scp -r _site/* rjhala@csefast.ucsd.edu:/net/cs/htdocs/classes/wi12/cse230-a/
-	ssh rjhala@csefast.ucsd.edu "chmod -R g+w /net/cs/htdocs/classes/wi12/cse230-a/ && chmod -R ugo+r /net/cs/htdocs/classes/wi12/cse230-a/"
+	scp -r _site/* $(SITEUSER):$(SITEPATH)
+	ssh $(SITEUSER) "chmod -R g+w $(SITEPATH) && chmod -R ugo+r $(SITEPATH)"
 
