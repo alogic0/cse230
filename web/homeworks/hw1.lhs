@@ -8,9 +8,8 @@ Preliminaries
 Before starting this assignment:
 
 1. Read chapters 1 -- 3 of The Haskell School of Expression.
-2. Download and install the [Glasgow Haskell Compiler (GHC)](http://www.haskell.org/ghc/).
-3. Download the SOE code bundle from
-   [the Haskell School of Expression page](/static/SOE.tar.gz).
+2. Download and install the [Haskell Platform](http://www.haskell.org/platform/).
+3. Download the [SOE code bundle](/static/SOE-CSE230-wi13.tgz).
 4. Verify that it works by changing into the `SOE/src` directory and
    running `ghci Draw.lhs`, then typing `main0` at the prompt:
  

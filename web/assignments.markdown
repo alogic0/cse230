@@ -18,5 +18,9 @@ atomic units over the entire quarter. By "atomic" I mean, for example, that
 Installing SOE on Ubuntu Linux
 ------------------------------
 
+<!--
 - [Ubuntu 10.04](homeworks/soe-instructions-ubuntu-10.04.html)
 - [Ubuntu 11.04](homeworks/soe-instructions-ubuntu-11.04.html)
+-->
+
+- [Ubuntu 12.04](homeworks/soe-instructions-ubuntu-12.04.html)

@@ -5,6 +5,10 @@ title: Links
 The below is a tiny fraction of what is available online;
 for more, start at [haskell.org](http://haskell.org).
 
+## Cheat Sheet
+
+- [Haskell Cheat Sheet](http://cheatsheet.codeslower.com/CheatSheet.pdf)
+
 ## Books 
 
 - [Haskell Wiki Book](http://en.wikibooks.org/wiki/Haskell) 
@@ -26,6 +30,8 @@ for more, start at [haskell.org](http://haskell.org).
 
 
 ## Courses
+
+- Dartmouth [Problem Solving with Computer Science](http://www.cs.dartmouth.edu/~cs8/F2011/haskell.php)
 
 - UPenn [Advanced Programming](http://www.cis.upenn.edu/~bcpierce/courses/552-2008/index.html)
 - Stanford [Programming Languages](https://courseware.stanford.edu/pg/courses/lectures/96023)
