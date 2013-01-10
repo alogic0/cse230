@@ -1,5 +1,5 @@
 ---
-title: Installing SOE Graphics (Ubuntu 12.04)
+title: SOE on Ubuntu 12.04
 ---
 
 To install SOE on Ubuntu 12.04 simply do the following.

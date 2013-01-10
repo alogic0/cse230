@@ -24,3 +24,4 @@ Installing SOE on Ubuntu Linux
 -->
 
 - [Ubuntu 12.04](homeworks/soe-instructions-ubuntu-12.04.html)
+- [Mac OS](homeworks/soe-instructions-macos-10.6.html)

@@ -1,5 +1,5 @@
 ---
-title: Installing SOE Graphics (MAC OS 10.6 (and above ?))
+title: SOE on MacOS
 ---
 
 ### SOE crashes `ghci` on MacOS 
@@ -26,15 +26,13 @@ $ wget http://cseweb.ucsd.edu/classes/wi13/cse230-a/static/SOE-CSE230-wi13.tgz
 $ tar -zxvf SOE-CSE230-wi13.tgz
 ~~~~~
 
-4. Grab and load [soe-test.hs](/static/soe-test.hs) 
-
-5. To test your install, build the application with the extended *search path* 
+4. To test your install, grab [soe-test.hs](/static/soe-test.hs) and build with the extended *search path* 
 
 ~~~~~
 $ ghc -i./SOE/src --make soe-test.hs
 ~~~~~
 
-6. Finally, test the code with the following
+5. Finally, test the code with the following
 
 ~~~~~
 $ ./soe-test 
