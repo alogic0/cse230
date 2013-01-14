@@ -26,7 +26,7 @@ title: Lectures
  
 ----------------------------------------------------------------------------------
 
-[lec1]: static/lec-intro.pdf
+[lec1]: static/lec-intro-2x2.pdf
 [hs]  : static/lec-intro.hs
 
 [lec2]: lectures/higher-order-1.html

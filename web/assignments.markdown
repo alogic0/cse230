@@ -6,7 +6,7 @@ title: Assignments
 atomic units over the entire quarter. By "atomic" I mean, for example, that
 35 mins over the deadline is equal to 1 late day.
 
-- [Homework #1](homeworks/hw1.html), due Friday, January 20 
+- [Homework #1](homeworks/hw1.html), due Friday, 1.18.2013
 
 <!---
 - [Homework #2](homeworks/hw2.html), due Friday, February 10

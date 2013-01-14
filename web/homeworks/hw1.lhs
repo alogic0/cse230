@@ -1,5 +1,5 @@
 ---
-title: Homework #1, Due Friday, January 20th
+title: Homework #1, Due Friday, 1/18/13
 ---
 
 Preliminaries
