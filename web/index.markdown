@@ -2,14 +2,18 @@
 title: Home 
 ---
 
+<!--
 
 ## Signup "Sheet"
 
 <iframe src="https://docs.google.com/a/eng.ucsd.edu/spreadsheet/embeddedform?formkey=dFJhaGJJZW1QUlN2NTVzbS1HaEYyQWc6MQ" width="760" height="629" frameborder="0" marginheight="0" marginwidth="0">Loading...</iframe>
 
+-->
+
 ## Staff
 
 *Instructor:* Ranjit Jhala `(jhala+230@cs.ucsd.edu)`
+*TA:* Niki Vazou `(nvazou+230@cs.ucsd.edu)`
 
 ## Co-ordinates 
 
