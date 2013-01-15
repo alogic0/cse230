@@ -665,16 +665,12 @@ Can you spot the pattern?
 > fuseActions :: [IO ()] -> IO ()	
 > fuseActions = foldr (>>) (return ())  
 
-
-
-
 Which is more readable? HOFs or Recursion
 -----------------------------------------
 
-As a beginner, you might think that the recursive versions of 
-`toUpperString` and `shiftPoly` are easier to follow than the 
-`map` versions. Certainly, `fold` takes a bit of getting used 
-to.
+As a beginner, you might think that the recursive versions of `toUpperString` and
+`shiftPoly` are easier to follow than the `map` versions. Certainly, `fold` takes 
+a bit of getting used to.
 
 However, as you get used to the light, you will 
 find the latter is infact far easier to follow, because once 
