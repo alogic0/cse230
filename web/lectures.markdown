@@ -30,13 +30,16 @@ title: Lectures
 [lec1]: static/lec-intro-2x2.pdf
 [hs]  : static/lec-intro.hs
 
-[lec2]: lectures/higher-order-1.html
+[lec2]: lectures/lec-higher-order-1.html
 [lec2s]: lectures/lec-higher-order.lhs.slides.html
 [lhs2]: lectures/higher-order-1.lhs
 
-[lec3]: lectures/higher-order-2.html
+[lec3]: lectures/lec-higher-order-2.html
 [lec3s]: lectures/lec-polymorphism.lhs.slides.html
 [lhs3]: lectures/higher-order-2.lhs
+
+[lec4]: lectures/lec-typeclasses.html
+[lhs4]: lectures/lec-typeclasses.lhs
 
 
 
