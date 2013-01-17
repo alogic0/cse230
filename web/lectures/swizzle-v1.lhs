@@ -1,5 +1,5 @@
 
-> import System
+> import System.Environment
 > import Data.Maybe
 > import Data.Char
 
@@ -10,6 +10,7 @@ First make a lookup table or *association list* of characters; each
 element is a list is a pair of the char and its swizzled version. Its
 easy enough to add caps as well, but note how we maintain readability
 with the `where`.
+
 
 > code :: [(Char, Char)]
 > code = smalls ++ caps 

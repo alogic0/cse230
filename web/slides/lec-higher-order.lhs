@@ -39,10 +39,10 @@ aListOfFuns   = [plus1, minus1, plus1, minus1]
 aBigListoFuns = replicate 10 plus1 ++ replicate 5 minus1
 \end{code}
 
-Note that type is very descriptive
+### The Type is Very Descriptive
 
 ~~~~~{.haskell}
-> :t aBigListoFuns
+ghci> :type aBigListoFuns
 aBigListoFuns :: [Int -> Int]
 ~~~~~
 
@@ -361,9 +361,14 @@ which lets us write
 ex2 = [1,2,3] ++ [4,5,6]
 \end{code}
 
+<br>
+
 **Quiz:** What is the value of `ex2` ?
 
+
 ## Sections
+
+<br>
 
 To **further improve** readability, partially apply infix operators
 
@@ -372,13 +377,24 @@ ghci> doTwice (+1) 0
 2
 ~~~~~
 
+<br>
+
 `:` the list cons operator, is also infix, so... 
 
 \begin{code}
 ex3 = doTwice (0:) [7]
 \end{code}
 
+<br>
+
 **Quiz:** what is the value of `ex3` ? 
 
+## Recap: Higher Order Functions 
 
+- [Functions Are Data](#functions-are-data)
 
+- [Partial Application](#partial-application)
+
+- [Anonymous Functions](#lambda-the-function-that-has-no-name)
+
+- [Infix Operators and Sections](#anonymous-functions)

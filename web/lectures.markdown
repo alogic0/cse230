@@ -8,7 +8,6 @@ title: Lectures
    *1/7*     Introduction                                       [pdf][lec1] 
    *1/9*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
   *1/14*     Polymorphism                                       [html][lec3] [slides][lec3s] [lhs][lhs3]
-             
              Typeclasses                                        
              Functional Animation                               
              Functional Reactivity                              
@@ -31,11 +30,11 @@ title: Lectures
 [hs]  : static/lec-intro.hs
 
 [lec2]: lectures/higher-order-1.html
-[lec2s]: lectures/lec-higher-order.lhs.slides.html
+[lec2s]: slides/lec-higher-order.lhs.slides.html
 [lhs2]: lectures/higher-order-1.lhs
 
 [lec3]: lectures/higher-order-2.html
-[lec3s]: lectures/lec-polymorphism.lhs.slides.html
+[lec3s]: slides/lec-polymorphism.lhs.slides.html
 [lhs3]: lectures/higher-order-2.lhs
 
 

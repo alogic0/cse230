@@ -16,8 +16,8 @@ you know to look for them. Next, we will develop a small library that
 2. Next, we will try to spot the patterns and eliminate 
    recursion using [higher-order functions](swizzle-v1.html).
 
-3. Finally, we will parameterize the code so that we can
-   both "swizzle" and "unswizzle" without having to duplicate code.
+3. Finally, we will [parameterize](swizzle-v2.html) the code so that we can
+   both "swizzle" and "unswizzle" without duplicate code.
 
 Exercise
 --------

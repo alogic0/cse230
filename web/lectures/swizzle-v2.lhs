@@ -1,5 +1,5 @@
 
-> import System
+> import System.Environment
 > import Data.Maybe
 > import Data.Char
 
@@ -37,11 +37,11 @@ And to transform many files
 Finally, at the very top, the command line args tell us whether to
 swizzle or unswizzle
 
- > main = do args <- getArgs 
- >           case args of 
- >             ("-s":files) -> txFiles swizzleChar files
- >             ("-u":files) -> txFiles unswizzleChar files
- >             (_)          -> putStrLn "usage: swizzle -s file1 file2 ... OR swizzle -u file1 file2 ..."
+> main = do args <- getArgs 
+>           case args of 
+>             ("-s":files) -> txFiles swizzleChar files
+>             ("-u":files) -> txFiles unswizzleChar files
+>             (_)          -> putStrLn "usage: swizzle -s file1 file2 ... OR swizzle -u file1 file2 ..."
 
 
 
