@@ -7,6 +7,8 @@ for more, start at [haskell.org](http://haskell.org).
 
 ## Cheat Sheet
 
+- [Getting Started With Haskell](http://bob.ippoli.to/archives/2013/01/11/getting-started-with-haskell/)
+
 - [Haskell Cheat Sheet](http://cheatsheet.codeslower.com/CheatSheet.pdf)
 
 ## Books 
