@@ -8,7 +8,7 @@ title: Lectures
    *1/7*     Introduction                                       [pdf][lec1] 
    *1/9*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
   *1/14*     Polymorphism                                       [html][lec3] [slides][lec3s] [lhs][lhs3]
-             Typeclasses                                        
+  *1/15*     Typeclasses                                        [html][lec4] [lhs][lhs4]
              Functional Animation                               
              Functional Reactivity                              
              Monads                                             

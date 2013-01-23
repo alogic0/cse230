@@ -9,11 +9,6 @@ We have already seen that the `+` operator works for a bunch of different
 underlying data types. For example
 
 ~~~~~{.haskell}
-import Control.Goober
-~~~~~
-
-
-~~~~~{.haskell}
 ghci> 2 + 3 
 5
 ghci> :type it
@@ -39,7 +34,7 @@ True
 
 Indeed, this is quite unremarkable, since languages since the dawn of time
 has supported some form of operator "overloading" to support this kind of 
-*ad--hoc polymorphism*. 
+**ad--hoc polymorphism**.
 
 However, in Haskell, there is no caste system. There is no distinction
 between operators and functions. All are first class citizens in Haskell.
@@ -143,6 +138,14 @@ and then calls `show` on the result. Thus, if we create a
 *new* type by
 
 > data Unshowable = A | B | C 
+
+> instance Show Unshowable where
+>   show A = "A"
+>   show B = "BB"
+>   show C = "CCC"
+
+> data List a = NULL 
+>             | CONS a (List a)
 
 then we can create values of the type, 
 
@@ -250,6 +253,30 @@ lookup tables etc.)
 >              | Bind k v (BST k v) (BST k v) 
 >              deriving (Show)
 
+> keysOfTree :: BST k v -> [k]
+> keysOfTree Empty            = []
+> keysOfTree (Bind key _ l r) = keysOfTree l ++ [key] ++ keysOfTree r  
+
+> valsOfTree :: BST k v -> [v]
+> valsOfTree Empty            = []
+> valsOfTree (Bind _ val l r) = valsOfTree l ++ [val] ++ valsOfTree r  
+
+> totalOfTree :: BST k Integer -> Integer
+> totalOfTree Empty           = 0
+> totalOfTree (Bind _ val l r) = totalOfTree l + val + totalOfTree r 
+
+
+  foo :: (k -> v -> BASE -> BASE -> BASE) -> BASE -> BST k v -> BASE
+
+> foo op base Empty          = base
+> foo op base (Bind k v l r) = op k v (foo op base l) (foo op base r)
+
+
+> keysOfTree'  = foo (\k _ lr rr -> lr ++ [k] ++ rr) []
+> valsOfTree'  = foo (\_ v lr rr -> lr ++ [v] ++ rr) []
+> totalOfTree' = foo (\_ v lr rr -> lr + v + rr)     0 
+
+
 We will call this type `BST` to abbreviate [Binary Search Tree][2] which
 are trees where keys are ordered such that at each node, the keys appearing
 in the *left* and *right* subtrees are respectively *smaller* and *larger* 
@@ -262,11 +289,13 @@ might look like
 We must ensure that the invariant is preserved by the `insert` function. 
 In the functional setting, the `insert` will return a brand new tree. 
 
+
+> insert k v Empty = Bind k v Empty Empty 
 > insert k v (Bind k' v' l r) 
 >   | k == k'      = Bind k v l r
 >   | k <  k'      = Bind k' v' (insert k v l) r 
 >   | otherwise    = Bind k' v' l (insert k v r)
-> insert k v Empty = Bind k v Empty Empty 
+
 
 The organization of the BST allows us to efficiently search the tree 
 for a key.
@@ -512,11 +541,6 @@ class Eq a  where
 
 Thus, to define our own equality (and disequality) procedures we write
 
-> instance (Eq k, Eq v) => Eq (BST k v) where
->   t1 == t2 = toList t1 == toList t2
-
-
-
 
 
 The above instance declaration states that if `k` and `v` are instances of
@@ -528,6 +552,7 @@ we get
 ghci> t == ofList (toList t)
 True
 ~~~~~
+
 
 In general, when instantiating a typeclass, Haskell will check that we have 
 provided a *minimal implementation* containing enough functions from which
@@ -639,8 +664,9 @@ similarly, we have
 But what about collections, namely objects and arrays? We might try
 
 > doublesToJSON :: [Double] -> JVal
-> doublesToJSON = JArr . map doubleToJSON 
->
+> doublesToJSON = JArr . map doubleToJSON
+
+
 > boolsToJSON   :: [Bool] -> JVal
 > boolsToJSON   = JArr . map boolToJSON
 >
