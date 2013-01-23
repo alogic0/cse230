@@ -5,7 +5,7 @@ title: Functional Animations
 > {-# LANGUAGE NoMonomorphismRestriction #-}
 > import SOE hiding (Region)
 > import qualified SOE as G (Region)
-> import System  (getArgs)
+> import System.Environment (getArgs)
 > import Shape
 > import Draw
 > import Picture
@@ -102,11 +102,11 @@ Here's another region
 
 which we color yellow
 
-> pic2 = Region Yellow reg2
+> pic2 = Region Red reg2
 
 and we can layer the two pictures over each other
 
-> pic3 =pic2 `Over` pic1
+> pic3 = pic2 `Over` pic1
 
 Drawing Pictures
 ----------------
