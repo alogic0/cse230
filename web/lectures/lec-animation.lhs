@@ -128,8 +128,6 @@ From Pictures To Animations
 
 So far, our pictures have been *static*, nothing moves. 
 
-<img src="../static/Animexample.png" width=100 align="middle"/> 
-
 Suppose we wanted to create animations. The standard trick 
 for how moving images work is by exploiting *persistence 
 of vision* wherein an illusion of motion is created by
@@ -154,8 +152,6 @@ purely functional value. How? A type is worth a thousand pictures...
 That is, an animation is *a function* that tells us, at 
 each time instant, what the image to be rendered at that 
 instant is!
-
-<img src="../static/Animexample.png" width=100 align="middle"/> 
 
 
 Lets write a simple `Shape` animation...
