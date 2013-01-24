@@ -9,7 +9,7 @@ title: Lectures
    *1/9*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
   *1/14*     Polymorphism                                       [html][lec3] [slides][lec3s] [lhs][lhs3]
   *1/15*     Typeclasses                                        [html][lec4] [lhs][lhs4]
-             Functional Animation                               
+  *1/23*     Functional Animation                               [html][lec5] [lhs][lec5]
              Functional Reactivity                              
              Monads                                             
              Monads: State                                      
@@ -39,6 +39,10 @@ title: Lectures
 
 [lec4]: lectures/lec-typeclasses.html
 [lhs4]: lectures/lec-typeclasses.lhs
+
+[lec5]: lectures/lec-animation.html
+[lhs5]: lectures/lec-animation.lhs
+
 
 
 
