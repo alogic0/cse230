@@ -39,11 +39,11 @@ We can create specific shape values like
 > s1 = Rectangle 3 2
 > s2 = Ellipse 1 1.5
 > s3 = RtTriangle 3 2
-> s4 = Polygon [(-2.5, 2.5)
->              ,(-3, 0)
->              ,(-1.7,-1.0)
->              ,(-1.1,0.2)
->              ,(-1.5,2.0)]
+> s4 = Polygon [ (-2.5, 2.5)
+>              , (-3  ,   0)
+>              , (-1.7,-1.0)
+>              , (-1.1, 0.2)
+>              , (-1.5, 2.0) ]
 
 
 We can convert a `Shape` into a more general `Region` 
@@ -102,7 +102,7 @@ Here's another region
 
 which we color yellow
 
-> pic2 = Region Red reg2
+> pic2 = Region Yellow reg2
 
 and we can layer the two pictures over each other
 
@@ -217,7 +217,7 @@ withColor Blue . shapeToGraphic . rubberBall :: Time -> Graphic
 
 Now, lets run some animations! 
 
-> main4 = animate "Shape"   $ withColor Blue . shapeToGraphic . rubberBall 
+> main4 = animate "Shape"   $ blueBall -- withColor Blue . shapeToGraphic . rubberBall 
 
 > main5 = animate "Text"    $ text (100,200) . ticker 
 
