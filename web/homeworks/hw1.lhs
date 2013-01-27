@@ -2,6 +2,17 @@
 title: Homework #1, Due Friday, 1/18/13
 ---
 
+Part 0: All About You
+---------------------
+
+Tell us your name, email and student ID, by replacing the respective
+strings below
+
+> myName  = "Write Your Name  Here"
+> myEmail = "Write Your Email Here"
+> mySID   = "Write Your SID   Here"
+
+
 Preliminaries
 -------------
 
