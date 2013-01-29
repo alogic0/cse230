@@ -10,7 +10,7 @@ title: Lectures
   *1/14*     Polymorphism                                       [html][lec3] [slides][lec3s] [lhs][lhs3]
   *1/15*     Typeclasses                                        [html][lec4] [lhs][lhs4]
   *1/23*     Functional Animation                               [html][lec5] [lhs][lhs5]
-  *1/28*     Functional Reactive Programming                    [html][lec6] [lhs][lhs5]
+  *1/28*     Functional Reactive Programming                    [html][lec6] [lhs][lhs6]
              Monads                                             
              Monads: State                                      
              Monads: Parser Combinators                         
