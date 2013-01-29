@@ -78,31 +78,13 @@ each time step.
 Toggling Colors Via Event Sampling 
 ----------------------------------
 
-Now, lets get the user involved. Suppose that I want a color behavior where
-the color is red until the left mouse button is clicked, at which point,
-the color should turn blue. With our combinators we would write
-
-red       :: Behavior Color
-(->>)     :: Event a -> b -> Event b
-leftclick :: Event ()
-mickeymouse :: Behavior a -> Event (Behavior a) -> Behavior a
-
-(leftclick ->> red) :: Event (Behavior Color)
-
-
-untilB    
-
-
-
-
-
-
-
-
+Now, lets get the user involved. Suppose that I want a color
+behavior where the color is red until the left mouse button 
+is clicked, at which point, the color should turn blue. 
+With our combinators we would write
 
 > main1 = reAct "1" $ paint redBlue circ   
 > redBlue = red `untilB` (lbp ->> blue)
-
 
 Theres a lot going on here! First, lets look at
 
@@ -142,29 +124,31 @@ button-click.) Lets look more closely at the the `untilB` combinator
 
 ~~~~~{.haskell}
 untilB :: Behavior a -> Event (Behavior a) -> Behavior a
-switch :: Behavior a -> Event (Behavior a) -> Behavior a
 ~~~~~
 
-The type is *almost* completely descriptive (we will soon see another
-combinator with the same type that works rather differently.) In essence,
-the expression `b untilB e` returns a behavior that is identical to `b`
-upto the point in time when the first (behavior) event on the stream `e` 
-is generated, at which point the behavior switches over to the new 
-behavior event. Thus,
+The type is *almost* completely descriptive (we will soon 
+see another combinator with the same type that works rather 
+differently.) In essence, the expression `b untilB e` is a 
+behavior that is identical to `b` upto the point in time when
+the first (behavior) event on the stream `e` is generated, 
+at which point the behavior switches over to the new behavior
+event. Thus,
 
 ~~~~~{.haskell}
 red `untilB` (lbp ->> blue) :: Behavior Color 
 ~~~~~
 
-is a behavior that is the color red *until* the first mouse-click, at which
-point the behavior toggles over to blue.
+is a behavior that is the color red *until* the first 
+mouse-click, at which point the behavior toggles over 
+to blue.
 
 Recursive Toggling 
 ------------------
 
-Now, we can fully exploit the power of the pure, combinator based approach
-to manipulating events and behaviors. We can write a simple color behavior
-that toggles between red and blue on each mouse click, by using recursion
+Now, we can fully exploit the power of the pure, combinator
+based approach to manipulating events and behaviors. We can
+write a simple color behavior that toggles between red and 
+blue on each mouse click, by using recursion
 
 > redBlueR = red  `untilB` lbp ->> 
 >            blue `untilB` lbp ->> 
@@ -212,12 +196,6 @@ we just move onto the tail of the list.
 > clickThru cs = toggle $ cycle cs 
 >   where toggle (c:cs) = c `untilB` (lbp ->> toggle cs)
 
-
- toggle (c:cs) = c `untilB` (lbp ->> toggle cs)
- toggle x = foldr (\c rest -> c `untilB` (lbp ->> rest)) x 
-
-
-
 **DO IN CLASS** What do you think the type of `clickThru` is ?
 
 Now lets see it in action!
@@ -226,8 +204,8 @@ Now lets see it in action!
 > rgby3 = clickThru colors
 > colors = [red, green, blue, yellow]
 
-**DO IN CLASS** 
-Yuck! The above has recursion! Can you think of a way to eliminate it entirely?
+**DO IN CLASS**  Yuck! The above has recursion! Can you think
+of a way to eliminate it entirely?
 
 
 
@@ -392,13 +370,21 @@ differently based on the key pressed, we can simply map
 the `key` event to the appropriate color behavior and compose
 the result with `switch` like so
 
-> rbChoose = white `switch` (key =>> \c ->
->              case c of 'R' -> red
->                        'B' -> blue
->                        'Y' -> yellow 
->                        _   -> white )
->
-> main8 = reAct "8" $ paint rbChoose circ
+> main8        = reAct "8" $ paint rbChoose circ
+>   where 
+>     rbChoose = white `switch` (key =>> charColorB white)
+
+where the function `charColorB` simply maps each `Char` to the
+corresponding `Behavior Color`.
+
+> charColorB _ 'R' = red
+> charColorB _ 'r' = red
+> charColorB _ 'B' = blue
+> charColorB _ 'b' = blue
+> charColorB _ 'Y' = yellow 
+> charColorB _ 'y' = yellow 
+> charColorB def _ = def 
+
 
 
 Saving Old Values
@@ -423,15 +409,13 @@ the snapshot combinator to generate an event stream with the
 colors that held at each keypress, and then switching over 
 the result.
 
+> main9      = reAct "9" $ paint rbRem circ
+>   where
+>     rbRem  = white `switch` ((key `snapshot` rbRem) =>> charColorRemB)
 
-> rbRem = white `switch` ((key `snapshot` rbRem) =>> \(c, old) ->
->           case c of 'R' -> red
->                     'B' -> blue
->                     'Y' -> yellow 
->                     _   -> lift0 old)
->
-> main9 = reAct "9" $ paint rbRem circ
+where the function `charColorRemB` uses the old color as the *default*
 
+> charColorRemB (c, oldc) = charColorB (lift0 oldc) c 
 
 
 Boolean Events
@@ -482,18 +466,17 @@ that toggles after `3` seconds.
 > main10 = reAct "10" $ paint w3b circ 
 >   where w3b = white `untilB` (when (time >* 3) ->> blue)
 
-We could generate a repeated pulse event by applying some periodic
-operation to the `time` behavior
-
-Now with a repeated clock
+We could generate a repeated pulse event by applying some 
+periodic operation to the `time` behavior. For example, 
+consider the event
 
 > pulse  = when (sin time >* 0)
 
-and we can use the pulse behavior to switch the color
+and we can use `pulse` to switch the color
 
-> main11 = reAct "11" $ paint rgby circ
->   where rgby = red `switch` (pulse `withElem_` colors)
-
+> main11   = reAct "11" $ paint rgby circ
+>   where 
+>     rgby = red `switch` (pulse `withElem_` colors)
 
 Integrating over the past
 -------------------------
