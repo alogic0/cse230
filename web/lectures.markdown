@@ -11,7 +11,7 @@ title: Lectures
   *1/15*     Typeclasses                                        [html][lec4] [lhs][lhs4]
   *1/23*     Functional Animation                               [html][lec5] [lhs][lhs5]
   *1/28*     Functional Reactive Programming                    [html][lec6] [lhs][lhs6]
-             Monads                                             
+  *1/30*     Monads                                             [html][lec7] [lhs][lhs7]
              Monads: State                                      
              Monads: Parser Combinators                         
              Randomized Testing and QuickCheck                  
@@ -45,6 +45,11 @@ title: Lectures
 
 [lec6]: lectures/lec-reactive.html
 [lhs6]: lectures/lec-reactive.lhs
+
+[lec7]: lectures/lec-monads.html
+[lhs7]: lectures/lec-monads.lhs
+
+
 
 
 
