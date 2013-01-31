@@ -690,12 +690,12 @@ We can lift the above operations to `Picture`
 and then finally, to `Behavior`
 
 > instance Deformable a => Deformable (Behavior a) where
->   turn theta (Beh b) = Beh (turn theta . b)
->   stretch x  (Beh b) = Beh (stretch x  . b)
+>   turn theta (Beh b) = Beh (\t -> turn theta (b t))
+>   stretch x  (Beh b) = Beh (\t -> stretch x (b t))
 
 Now, we can pull even neater effects from our DSL
 
-> anim6 = animateB "Pendulum" $ swirly triB 
+> anim6 = animateB "Pendulum" $ swirly pentaB -- triB 
 
 > swirly = reg flash'' 
 >        . lift2 stretch (1.2 + sin time) 

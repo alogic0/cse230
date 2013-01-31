@@ -196,6 +196,16 @@ we just move onto the tail of the list.
 > clickThru cs = toggle $ cycle cs 
 >   where toggle (c:cs) = c `untilB` (lbp ->> toggle cs)
 
+-- toggle' cs  = foldr (\c r -> c `untilB` (lbp ->> r)) 
+--                    undefined cs
+
+
+foldr op base (c1:c2:c3:c4:c5:...:[])
+==> (c1 `op` c2 `op` c3 `op` c4 `op` c5 `op` ....`op` base)
+
+
+  
+
 **DO IN CLASS** What do you think the type of `clickThru` is ?
 
 Now lets see it in action!
