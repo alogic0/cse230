@@ -1,5 +1,5 @@
 ---
-title: Homework #2, Due Sunday 2/5/13
+title: Homework #2, Due Sunday 2/3/13
 ---
 
 This week's homework is presented as a literate Haskell file,

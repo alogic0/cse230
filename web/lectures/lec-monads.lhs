@@ -62,9 +62,111 @@ using which our two examples can now be defined more compactly:
 > inc = map (+1)
 > sqr = map (^2)
 
+Generalizing `map`
+------------------
+
+The same notion of `map`ping applies to other types, for example, you can
+imagine:
+
+~~~~~{.haskell}
+map :: (a -> b) -> Maybe a -> Maybe b
+~~~~~
+
+or 
+
+~~~~~{.haskell}
+map :: (a -> b) -> Behavior a -> Behavior b
+~~~~~
+
+or 
+
+~~~~~{.haskell}
+map :: (a -> b) -> IO a -> IO b
+~~~~~
+
+**DO IN CLASS** 
+How would you write each of the above functions?
+
+For this reason, there is a *typeclass* called `Functor` that 
+corresponds to the type constructors that you can `map` over:
+
+~~~~~{.haskell}
+class Functor m where
+  fmap :: (a -> b) -> m a -> m b
+~~~~~
+
+**Note: ** The `m` is the type constructor, e.g. `[]` or `IO` or `Maybe`
+
+Generalizing `map` to Many Arguments
+------------------------------------
+
+
+As we saw earlier, `lift1` and `lift2` and `lift3` etc. are all
+generalizations of `map` to multiple arguments. For example:
+
+~~~~~{.haskell}
+lift2 :: (a1 -> a2 -> b) 
+      -> [a1] 
+      -> [a2] 
+      -> [b]
+
+lift3 :: (a1 -> a2 -> a3 -> b) 
+      -> [a1] 
+      -> [a2] 
+      -> [a3] 
+      -> [b]
+~~~~~
+
+**DO IN CLASS**  Implement the above!
+
+or
+
+~~~~~{.haskell}
+lift2 :: (a1 -> a2 -> b) 
+     -> Beh a1 
+     -> Beh a2 
+     -> Beh a3
+
+lift3 :: (a1 -> a2 -> a3 -> b) 
+      -> Beh a1 
+      -> Beh a2 
+      -> Beh a3 
+      -> Beh b
+~~~~~
+
+(These are just `lift2` and `lift3` from the Animation lecture.)
+
+For this reason, there is a *typeclass* called `Applicative` that 
+corresponds to the type constructors that you can `lift2` or `lift3` 
+over.
+
+~~~~~{.haskell}
+liftA  :: Applicative t 
+       => (a -> b) 
+       -> t a 
+       -> t b
+
+liftA2 :: Applicative t 
+       => (a1 -> a2 -> b) 
+       -> t a1 
+       -> t a2
+       -> t b
+
+liftA3 :: Applicative t 
+       => (a1 -> a2 -> a3 -> b) 
+       -> t a1 
+       -> t a2
+       -> t a3
+       -> t b
+~~~~~
+
+**Note: ** The `t` is the type constructor, e.g.
+`[]` or `IO` or `Maybe` or `Behavior`.
+
 
 A Simple Evaluator
-------------------
+==================
+
 
 Consider the following simple language of expressions that are
 built up from integer values using a division operator:
