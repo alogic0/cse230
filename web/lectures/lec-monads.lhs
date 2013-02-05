@@ -9,15 +9,6 @@ title: Programming With Effects
 Shall we be pure or impure?
 ---------------------------
 
-foo :: (a -> b)-> Maybe a -> Maybe b
-foo f Nothing  = Nothing
-foo f (Just x) = Just (f x)
-
-doo :: (a -> b) -> IO a -> IO b
-doo f act = do x <- act
-               return (f x)
-
-
 The functional programming community divides into two camps:
 
 - "Pure" languages, such as Haskell, are based directly
