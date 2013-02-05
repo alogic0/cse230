@@ -2,10 +2,21 @@
 title: Programming With Effects
 ---
 
+> import Data.Map hiding (map)
+
 **Formatted version of the lecture notes by [Graham Hutton][0], January 2011**
 
 Shall we be pure or impure?
 ---------------------------
+
+foo :: (a -> b)-> Maybe a -> Maybe b
+foo f Nothing  = Nothing
+foo f (Just x) = Just (f x)
+
+doo :: (a -> b) -> IO a -> IO b
+doo f act = do x <- act
+               return (f x)
+
 
 The functional programming community divides into two camps:
 
@@ -62,20 +73,150 @@ using which our two examples can now be defined more compactly:
 > inc = map (+1)
 > sqr = map (^2)
 
+Generalizing `map`
+------------------
+
+The same notion of `map`ping applies to other types, for example, you can
+imagine:
+
+~~~~~{.haskell}
+map :: (a -> b) -> Maybe a -> Maybe b
+~~~~~
+
+or 
+
+~~~~~{.haskell}
+map :: (a -> b) -> Behavior a -> Behavior b
+~~~~~
+
+or 
+
+~~~~~{.haskell}
+map :: (a -> b) -> IO a -> IO b
+~~~~~
+
+**DO IN CLASS** 
+How would you write each of the above functions?
+
+For this reason, there is a *typeclass* called `Functor` that 
+corresponds to the type constructors that you can `map` over:
+
+~~~~~{.haskell}
+class Functor m where
+  fmap :: (a -> b) -> m a -> m b
+~~~~~
+
+**Note: ** The `m` is the type constructor, e.g. `[]` or `IO` or `Maybe`
+
+Generalizing `map` to Many Arguments
+------------------------------------
+
+
+As we saw earlier, `lift1` and `lift2` and `lift3` etc. are all
+generalizations of `map` to multiple arguments. For example:
+
+~~~~~{.haskell}
+lift1 :: (a -> b)
+      -> Behavior a
+      -> Behavior b
+
+lift1           :: (a -> b) -> [a] -> [b]
+lift1 f []      = []
+lift1 f (x:xs)  = f x : lift1 f xs
+
+
+lift2 :: (a1 -> a2 -> b) -> [a1] -> [a2] -> [b]
+lift2 f (x1:x1s) (x2:x2s) = f x1 x2 : lift2 f x1s x2s
+lift2 f _        _        = []
+
+
+
+
+lift3 :: (a1 -> a2 -> a3 -> b) 
+      -> [a1] 
+      -> [a2] 
+      -> [a3] 
+      -> [b]
+~~~~~
+
+**DO IN CLASS**  Implement the above!
+
+or
+
+~~~~~{.haskell}
+lift2 :: (a1 -> a2 -> b) 
+     -> Beh a1 
+     -> Beh a2 
+     -> Beh a3
+
+lift3 :: (a1 -> a2 -> a3 -> b) 
+      -> Beh a1 
+      -> Beh a2 
+      -> Beh a3 
+      -> Beh b
+~~~~~
+
+(These are just `lift2` and `lift3` from the Animation lecture.)
+
+For this reason, there is a *typeclass* called `Applicative` that 
+corresponds to the type constructors that you can `lift2` or `lift3` 
+over.
+
+~~~~~{.haskell}
+liftA  :: Applicative t 
+       => (a -> b) 
+       -> t a 
+       -> t b
+
+liftA2 :: Applicative t 
+       => (a1 -> a2 -> b) 
+       -> t a1 
+       -> t a2
+       -> t b
+
+liftA3 :: Applicative t 
+       => (a1 -> a2 -> a3 -> b) 
+       -> t a1 
+       -> t a2
+       -> t a3
+       -> t b
+~~~~~
+
+**Note:** The `t` is the type constructor, e.g. `[]` or `IO` or `Maybe` or `Behavior`.
+
 
 A Simple Evaluator
-------------------
+==================
+
 
 Consider the following simple language of expressions that are
 built up from integer values using a division operator:
 
-> data Expr1= Val1 Int | Div1 Expr1 Expr1
+> data Expr1 = Val1 Int | Div1 Expr1 Expr1 deriving (Show)
+             | ITE Expr1 Expr1 Expr1
 
 Such expressions can be evaluated as follows:
 
 > eval1 ::  Expr1 -> Int
 > eval1 (Val1 n)   =  n
 > eval1 (Div1 x y) =  eval1 x `div` eval1 y
+
+
+> eval1' ::  Expr1 -> Maybe Int
+> eval1' (Val1 n)   = Just n
+> eval1' (Div1 x y) = safeDiv (eval1' x) (eval1' y)
+
+
+> safeDiv _ (Just 0)        = Nothing
+> safeDiv (Just n) (Just m) = Just (n `div` m)
+> safeDiv _        _        = Nothing
+
+safeD n 0 = Nothing
+safeD n m = Just $ n `div` m
+
+
+
+
 
 However, this function doesn't take account of the possibility
 of **division by zero**, and will produce an error in this case. 
@@ -100,6 +241,16 @@ eval (Div x y) =  case eval x of
                     Just n  -> case eval y of
                                  Nothing -> Nothing
                                  Just m  -> safediv n m
+
+eval (ITE x y z) = case eval x of
+                     Nothing -> Nothing
+                     Just 0  -> case eval z of
+                                  Nothing -> Nothing
+                                  Just m  -> Just m
+                     Just _  -> case eval y of
+                                  Nothing -> Nothing
+                                  Just m  -> Just m
+
 ~~~~~
 
 As in the previous section, we can observe a common pattern, namely
@@ -363,10 +514,10 @@ As a simple example of the use of the list monad, a function
 that returns all possible ways of pairing elements from two 
 lists can be defined using the do notation as follows:
 
-> pairs :: [a] -> [b] -> [(a,b)]
-> pairs xs ys =  do x <- xs
->                   y <- ys
->                   return (x, y)
+ pairs :: [a] -> [b] -> [(a,b)]
+ pairs xs ys =  do x <- xs
+                   y <- ys
+                   return (x, y)
 
 That is, consider each possible value `x` from the list `xs`, and 
 each value `y` from the list `ys`, and return the pair `(x,y)`. It
@@ -646,15 +797,6 @@ how do you think this behaves?
 >        fresh >>
 >        return [n1, n2]
 
-> wtf2' = do { n1 <- fresh;  
->              n2 <- fresh;
->              fresh ;
->              fresh ;
->              return [n1, n2];
->            }
-
-
-
 **DO IN CLASS** 
 What do you think this would return:
 
@@ -665,10 +807,10 @@ ghci> apply0 wtf2 0
 Now, the `do` business is just nice syntax for the above:
 
 > wtf3 = do n1 <- fresh
+>           n1 <- fresh
 >           fresh
 >           fresh
->           fresh
->           return n1
+>           return [n1, n2]
 
 is just like `wtf2`.
 
