@@ -189,7 +189,14 @@ with this, rendering is trivial. First, lets create an
 appropriate animation
 
 > blueBall ::  Animation Graphic
-> blueBall = withColor Blue . shapeToGraphic . rubberBall 
+> blueBall = withColor Blue . shapeToGraphic . rubberBall
+
+
+
+
+
+
+
 
 
 The above type looks a bit surprising, but lets slowly 
@@ -235,6 +242,16 @@ A Brief Digression: `$` and `.`
 ($) :: (a -> b) -> a -> b
 ($) f x = f x
 
+
+foo x = bar (baz (goo (moo (poo x))))
+
+foo   = bar . baz . goo . moo . poo 
+
+foo x = bar (baz x)
+
+foo   = bar . baz
+
+
 (.) ::  (b -> c) -> (a -> b) -> (a -> c)
 (.) f g = \x -> f(g(x))
 
@@ -279,13 +296,15 @@ combinators in a safe and flexible way.
 2. Next, we can simply *translate* a picture behavior with an 
    xy-coordinate behavior thereby giving us a shifted animation.
 
-> demo2 = animateB "2" $ reg yellow $ tx (0, sin time) ballB
+> demo2 = animateB "2" $ reg yellow $ bounce $ ballB
+
+> bounce = tx (0, sin time)
 
 3. We can trivially *reuse* the bouncing mechanism, by 
    translating a different object with the same rotation 
    behavior.
 
-> demo3 = animateB "3" $ reg red $ tx (0, sin time) pentaB
+> demo3 = animateB "3" $ reg red $ bounce $ pentaB
 
 4. We can think of the color itself as a behavior and if 
    we replace `red` with `flash` then the rendered image's 
@@ -382,6 +401,23 @@ new behavior type.
 > animateB ::  String -> Behavior Picture -> IO ()
 > animateB s (Beh f) = animate s (picToGraphic. f)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Next, lets look at how to build our DSL for writing
 `Behavior Picture` values.
 
@@ -398,6 +434,7 @@ The notion of *lifting* is quite general (and has been studied
 formally.) Rather than getting too abstract, lets just replace 
 `[]` above with `Behavior` and `map` with `lift1` and we can 
 imagine functions like
+
 
 > lift1 :: (a -> b) -> Behavior a -> Behavior b
 > lift1 f (Beh a) = Beh $ \t -> f (a t)
@@ -417,7 +454,7 @@ a constant value into a behaviour that returns that value
 at each instant in time.
 
 > lift0 :: a -> Behavior a
-> lift0 x = Beh $ \t -> x
+> lift0 x = Beh $ \_ -> x
 
 and a function that lifts a function over a list.
 
@@ -653,12 +690,12 @@ We can lift the above operations to `Picture`
 and then finally, to `Behavior`
 
 > instance Deformable a => Deformable (Behavior a) where
->   turn theta (Beh b) = Beh (turn theta . b)
->   stretch x  (Beh b) = Beh (stretch x  . b)
+>   turn theta (Beh b) = Beh (\t -> turn theta (b t))
+>   stretch x  (Beh b) = Beh (\t -> stretch x (b t))
 
 Now, we can pull even neater effects from our DSL
 
-> anim6 = animateB "Pendulum" $ swirly triB 
+> anim6 = animateB "Pendulum" $ swirly pentaB -- triB 
 
 > swirly = reg flash'' 
 >        . lift2 stretch (1.2 + sin time) 

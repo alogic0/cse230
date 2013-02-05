@@ -196,6 +196,15 @@ we just move onto the tail of the list.
 > clickThru cs = toggle $ cycle cs 
 >   where toggle (c:cs) = c `untilB` (lbp ->> toggle cs)
 
+-- toggle' cs  = foldr (\c r -> c `untilB` (lbp ->> r)) 
+--                    undefined cs
+
+foldr op base (c1:c2:c3:c4:c5:...:[])
+==> (c1 `op` c2 `op` c3 `op` c4 `op` c5 `op` ....`op` base)
+
+
+  
+
 **DO IN CLASS** What do you think the type of `clickThru` is ?
 
 Now lets see it in action!
@@ -276,12 +285,14 @@ Such a functionality is provided by the `switch` combinator
 switch :: Behavior a -> Event (Behavior a) -> Behavior a
 ~~~~~
 
-Note that the type of `switch` is identical to that of `untilB`. So! the
-types don't always tell you everything, so choose your names carefully!
+Note that the type of `switch` is identical to that of `untilB`. 
+So! the types don't always tell you everything, so choose your 
+names carefully!
 
-The expression `b switch e` is a behavior that starts off as `b` and then,
-at each event on the `e` stream, switches over to the behavior returned by 
-that event. Thus, we can get our repeated toggling simply by
+The expression `b switch e` is a behavior that starts off as `b` 
+and then, at each event on the `e` stream, switches over to the 
+behavior returned by that event. Thus, we can get our repeated 
+toggling simply by
 
 > main6 = reAct "6" $ paint redBorYR circ
 >   where redBorYR = red `switch` ((lbp ->> blue) .|. (key ->> yellow))
@@ -290,9 +301,10 @@ that event. Thus, we can get our repeated toggling simply by
 Sampling Between Many Choices
 -----------------------------
 
-Let us revisit the example where we toggled over a bunch of colors. The
-pattern of using the same event stream to sample between an (infinite) list
-of values is so common, that we can capture it in a combinator 
+Let us revisit the example where we toggled over a bunch 
+of colors. The pattern of using the same event stream to 
+sample between an (infinite) list of values is so common, 
+that we can capture it in a combinator 
 
 ~~~~~{.haskell}
 withElem_ :: Event a -> [b] -> Event b
@@ -512,7 +524,7 @@ of a bouncing ball animation.
 >         y   = 1.5 + integral vv
 >         vv  = integral g `switch` 
 >                 (when (y <* -1.5) `snapshot_` vv =>> \v' ->
->                  lift0 (-v') + integral g)
+>                  lift0 (-v' * 0.75) + integral g)
 >
 > main12 = reAct "bball" $ paint red (bball (-4) 0.5)
 
