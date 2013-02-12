@@ -447,10 +447,14 @@ ghci> doParse (string "mic") "donald duck"
 []
 ~~~~~
 
-Ok, I guess that wasn't really recursive then after all! Lets try again.
-Lets write a combinator that takes a parser `p` that returns an `a` and
-returns a parser that returns *many* `a` values. That is, it keeps grabbing 
-as many `a` values as it can and returns them as a `[a]`.
+Ok, I guess that wasn't really recursive then after all! 
+
+Lets try again.
+
+Lets write a combinator that takes a parser `p` that 
+returns an `a` and returns a parser that returns *many* 
+`a` values. That is, it keeps grabbing as many `a` values 
+as it can and returns them as a `[a]`.
 
 > manyP   :: Parser a -> Parser [a]
 > manyP p = many1 `chooseP` many0 
@@ -650,13 +654,6 @@ operations into addition- and multiplication-precedence.
 Now, we can stratify our language into (mutually recursive) 
 sub-languages, where each top-level expression is parsed as 
 a *sum-of-products* 
-
-> pP `chain` opP 
->   = recP <|> pP
->     where recP = do x <- pP
->                     o <- opP
->                     y <- (pP `chain` opP)
->                     return $ x `o` y
 
 > sumE = addE <|> prodE 
 >   where addE = do x <- prodE 
