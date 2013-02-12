@@ -12,9 +12,8 @@ title: Lectures
   *1/23*     Functional Animation                               [html][lec5] [lhs][lhs5]
   *1/28*     Functional Reactive Programming                    [html][lec6] [lhs][lhs6]
   *1/30*     Monads                                             [html][lec7] [lhs][lhs7]
-             Monads: State                                      
-             Monads: Parser Combinators                         
-             Randomized Testing and QuickCheck                  
+  *2/11*     Parser Combinators                                 [html][lec9] [lhs][lhs9]
+             Randomized Testing
              Monad Transformers                                 
              Software Transactional Memory                      
              Data Parallelism
@@ -48,6 +47,10 @@ title: Lectures
 
 [lec7]: lectures/lec-monads.html
 [lhs7]: lectures/lec-monads.lhs
+
+[lec9]: lectures/lec-parsers.html
+[lhs9]: lectures/lec-parsers.lhs
+
 
 
 
