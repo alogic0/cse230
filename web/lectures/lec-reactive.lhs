@@ -12,7 +12,7 @@ title: Reactive Programming
 > import Memo1
 > import Draw (xWin,yWin,intToFloat)
 > import Control.Concurrent.Chan
-> import System  (getArgs)
+> import System.Environment  (getArgs)
 >
 > infixr 1 =>>, ->>
 > infixr 1 `untilB`, `switch`, `stepAccum`, `step`

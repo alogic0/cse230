@@ -81,11 +81,9 @@ Of course, it would be silly to have different types for parsers for
 different kinds of objects, and so we can make it a parameterized type
 
 
-
-
-
-
-
+~~~~~{.haskell}
+type Parser a = String -> (a, String) 
+~~~~~
 
 One last generalization: the parser could return multiple results, for
 example, we may want to parse the string
@@ -135,8 +133,6 @@ a list if one exists
 >                  _         -> [])
 
 
-> twoChar9 = oneChar `pairP` oneChar
-
 Lets run the parser
 
 ~~~~~{.haskell}
@@ -152,11 +148,6 @@ Parser Composition
 
 We can write a combinator that takes two parsers and returns a 
 new parser that returns a pair of values
-
-
-
-
-
 
 ~~~~~{.haskell}
 pairP ::  Parser a -> Parser b -> Parser (a,b)
@@ -259,34 +250,22 @@ combinators for composing smaller parsers into bigger ones.
 For example, we can use our beloved `do` notation to rewrite 
 the `pairP` as
 
-
-
 > pairP px py = do x <- px
 >                  y <- py
 >                  return (x, y)
-
-
-
-chooseP p1 p2 = P (\cs -> doParse p1 cs ++ doParse p2 cs)
-      
-
-
-
-
-
-
 
 shockingly, exactly like the `pairs` function [from here](/lectures/monads2.html).
 
 Next, lets flex our monadic parsing muscles and write some new 
 parsers. It will be helpful to have a a *failure* parser that 
-always goes down in flames (returns `[]`)
+always goes down in flames, that is, returns `[]` -- *no* 
+successful parses.
 
 > failP = P $ const []
 
-Seems a little silly to write the above, but its helpful to 
-build up richer parsers like the following which parses a 
-`Char` *if* it satisfies a predicate `p`
+Seems a little silly to write the above, but its helpful to build 
+up richer parsers like the following which parses a `Char` *if* 
+it satisfies a predicate `p`
 
 > satP ::  (Char -> Bool) -> Parser Char
 > satP p = do 
@@ -370,11 +349,7 @@ parser that grabs `n` characters from the input
 >                          return (c:cs)
 
 
-grabn n = sequence (take n $ cycle oneChar)
-grabn n = sequence (replicate n oneChar)
-
-**DO IN CLASS** 
-How would you nuke the nasty recursion from the above?
+**DO IN CLASS** How would you nuke the nasty recursion from the above?
 
 
 Now, we can use our choice combinator 
@@ -419,13 +394,6 @@ Next, we can parse the expression
 >           y  <- digitInt 
 >           return $ x `op` y
 
-
-stringP str = sequence (map char str)
-
-stringP = sequence . map char
-
-
-
 which, when run, will both parse and calculate
 
 ~~~~~{.haskell}
@@ -464,9 +432,10 @@ string (c:cs) = do char c
                    return $ c:cs
 ~~~~~
 
+**DO IN CLASS**
 Ewww! Is that explicit recursion ?! Lets try again (can you spot the pattern)
 
-> string = mapM char
+> string = undefined -- fill this in
 
 Much better!
 

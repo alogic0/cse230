@@ -169,8 +169,11 @@ A Simple Evaluator
 Consider the following simple language of expressions that are
 built up from integer values using a division operator:
 
-> data Expr1 = Val1 Int | Div1 Expr1 Expr1 deriving (Show)
-             | ITE Expr1 Expr1 Expr1
+> data Expr1 = Val1 Int 
+>            | Div1 Expr1 Expr1 
+>            | ITE Expr1 Expr1 Expr1
+>              deriving (Show)
+
 
 Such expressions can be evaluated as follows:
 
@@ -213,11 +216,29 @@ and then modify our evaluator as follows:
 ~~~~~{.haskell}
 eval           :: Expr -> Maybe Int
 eval (Val n)   =  Just n
-eval (Div x y) =  case eval x of
-                    Nothing -> Nothing
-                    Just n  -> case eval y of
-                                 Nothing -> Nothing
-                                 Just m  -> safediv n m
+eval (Div x y) =  do n <- eval x
+                     m <- eval y
+                     safediv n m
+
+
+
+                  e1 >>= \x1 ->
+                  e2 >>= \x2 ->
+                  e3 >>= \x3 ->
+                  foo x1 x2 x3
+
+
+                 do x1 <- e1
+                    x2 <- e2
+                    x3 <- e3
+                    foo x1 x2 x3
+                    
+
+
+
+
+
+
 
 eval (ITE x y z) = case eval x of
                      Nothing -> Nothing
@@ -288,6 +309,16 @@ a new sequencing operator that we write as `>>=`, and read as "then":
 m >>= f =  case m of
              Nothing -> Nothing
              Just x  -> f x
+
+class (Monad t) where
+  (>>=)  :: t a -> (a -> t b) -> t b
+  return :: a -> t a
+ 
+instance Monad Maybe where
+  Nothing >>= f = Nothing
+  Just x  >>= f = f x
+
+  return x      = Just x
 ~~~~~
 
 Replacing the use of case analysis by pattern matching gives a
@@ -445,7 +476,20 @@ instance Monad Maybe where
    -- (>>=)       :: Maybe a -> (a -> Maybe b) -> Maybe b
    Nothing  >>= _ =  Nothing
    (Just x) >>= f =  f x
+
+instance Monad [] where
+
+   -- return      :: a -> [a]
+   return x       = [x]
+
+   -- (>>=)       :: [a] -> (a -> [b]) -> [b]
+   xs >>= f       = concat (map f xs)
+
+
+
 ~~~~~
+
+
 
 (*Aside*: types are not permitted in instance declarations, but we
 include them as comments for reference.)  It is because of this
@@ -478,6 +522,26 @@ instance Monad [] where
    -- (>>=)  :: [a] -> (a -> [b]) -> [b]
    xs >>= f  =  concat (map f xs)
 ~~~~~
+
+> baz :: [a] -> [b] -> [(a,b)]
+> baz xs ys = do x <- xs
+>                y <- ys
+>                return (x, y)
+
+
+
+
+
+  def baz(xs, ys) = for ( x <- xs
+                        ; y <- ys)
+                    yield (x, y)
+
+  baz(List("c", "a", "t"), List("b", "u", "t"))
+
+
+ zoo = baz "cat" "but"
+            ('c', 'b'), ('a', 'u'), ('t', 't')
+
 
 (*Aside*: in this context, `[]` denotes the list type `[a]` without
 its parameter.)  That is, return simply converts a value into a
@@ -535,6 +599,45 @@ value gets the next highest number. So I want to see something like
 ghci> canonize vals0 
 [0, 1, 0, 0, 2]
 ~~~~~
+
+def canon(xs):
+  n = 0
+  d = {}
+  for x in xs:
+    if x in d:
+      pass
+    else:
+      d[x] = n
+      n   += 1
+
+  return [d[y] for y in xs]
+
+
+
+
+
+
+canon xs = [d ! x | x <- xs] 
+  where 
+    (_, d) = go (0, empty) xs
+    go (n, d) (x:xs) =
+      | x `mem` d    = go (n  , d) xs
+      | otherwise    = go (n+1, add x n d) xs
+    go (n, d) []     = (n, d)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 similarly, I want:
 
@@ -603,8 +706,19 @@ state transformers to also return a result value, with the
 type of such values being a parameter of the `ST` type:
 
 ~~~~~{.haskell}
-type ST a = State -> (a, State)
+data ST a = S (State -> (a, State))
+
+instance Monad ST where
+  -- return :: a -> ST a
+  return x  = S (\st -> (x, st)) 
+
+  -- >>=  :: ST a -> (a -> ST b) -> ST b
+  (S tx1) >>= bar = S $ \st -> let (v, st') = tx1 st in 
+                                   S tx2    = bar v 
+                               in tx2 st'
+
 ~~~~~
+
 
 Such functions can be depicted as follows, where `s` is the input
 state, `s'` is the output state, and `v` is the result value:
@@ -688,6 +802,11 @@ introducing a dummy constructor (called `S` for brevity):
 
 > data ST0 a = S0 (State -> (a, State))
 
+
+
+
+
+
 It is convenient to define our own application function for
 this type, which simply removes the dummy constructor:
 
@@ -738,6 +857,7 @@ its result, and the next integer as the new state:
 > fresh :: ST0 Int
 > fresh =  S0 (\n -> (n, n+1))
 
+
 Note that `fresh` is a *state transformer* (where the state 
 is itself just `Int`), that is an *action* that happens to 
 return integer values. What do you think the following does:
@@ -768,6 +888,16 @@ takes a value `x` and yields an *action* that doesnt actually transform the
 state, but just returns the same value `x`. So, putting things together,
 how do you think this behaves?
 
+> wtf4 = fresh >>= \_ ->
+>        fresh >>= \_ ->  
+>        fresh >>= \_ ->
+>        fresh  
+
+  wtf4 = do fresh
+            fresh
+            fresh
+            fresh
+
 > wtf2 = fresh >>= \n1 ->
 >        fresh >>= \n2 ->  
 >        fresh >>
@@ -784,7 +914,7 @@ ghci> apply0 wtf2 0
 Now, the `do` business is just nice syntax for the above:
 
 > wtf3 = do n1 <- fresh
->           n1 <- fresh
+>           n2 <- fresh
 >           fresh
 >           fresh
 >           return [n1, n2]
@@ -806,6 +936,36 @@ Here is a simple example:
 
 > tree :: Tree Char
 > tree =  Node (Node (Leaf 'a') (Leaf 'b')) (Leaf 'c')
+
+> tree' =  Node (Node (Leaf ('a', 0)) (Leaf ('b', 1))) (Leaf ('c', 2))
+
+> tagTree :: Tree a -> Tree (a, Int)
+> tagTree t = snd $ helper 0 t
+
+> helper n (Leaf x)   = (n+1, Leaf (x, n))
+> helper n (Node l r) = (n'', Node l' r' )
+>   where (n', l')    = helper n  l
+>         (n'', r')   = helper n' r
+
+> tagTreeM :: Tree a -> ST0 (Tree (a, Int))
+>
+> tagTreeM (Leaf x) 
+>   = do n <- fresh
+>        return $ Leaf (x, n)
+>
+> tagTreeM (Node l r) 
+>   = do l' <- tagTreeM l
+>        r' <- tagTreeM r
+>        return $ Node l' r'
+
+
+
+
+
+(helper n l) (helper (n + size l) r)
+
+
+
 
 Now consider the problem of defining a function that labels each 
 leaf in such a tree with a unique or "fresh" integer.  This can
@@ -928,26 +1088,16 @@ the function
 
 > put s' = S (\_ -> ((), s'))
 
-
-
-fresh  = S0 (\n -> (n, n+1))
+We can use it like this...
 
 > realfresh :: ST Int Int
 > realfresh = do n <- get
 >                put (n+1)
 >                return n 
 
-
-
-
-
-
-
-
 which denotes an action that ignores (ie blows away the old state) and
 replaces it with `s'`. Note that the `put s'` is an action that itselds 
 yields nothing (that is, merely the unit value.)
-
 
 
 Using a Generic State Transformer
@@ -978,10 +1128,6 @@ Now, the labeling function is straightforward
 >                          r' <- mlabelS r
 >                          return (Node l' r')
 
-
-
-
-
 Easy enough!
 
 ~~~~~{.haskell}
@@ -995,6 +1141,33 @@ We can *execute* the action from any initial state of our choice
 ghci> apply (mlabelS tree) 1000
 (Node (Node (Leaf ('a',1000)) (Leaf ('b',1001))) (Leaf ('c',1002)),1003)
 ~~~~~
+
+> tree2 =  Node (Node (Leaf 'a') (Leaf 'b')) 
+>               (Node (Leaf 'a') (Leaf 'c'))
+
+
+> data Something a = RECORD { count :: Int, freqq :: Map a Int }
+>                    deriving (Show)
+
+
+> fresh' = do st <- get
+>             let n = count st
+>             put $ st { count = n + 1 }
+>             return n
+
+> updFreq c = do st   <- get
+>                let n = findWithDefault 0 c (freqq st)
+>                put $ st { freqq = insert c (n+1) (freqq st) }
+>                return ()
+
+> mlabel' (Leaf x)   =  do n <- fresh'
+>                          updFreq x
+>                          return (Leaf (x, n))
+>
+> mlabel' (Node l r) =  do l' <- mlabel' l
+>                          r' <- mlabel' r
+>                          return (Node l' r')
+
 
 Now, whats the point of a generic state transformer if we can't have richer
 states. Next, let us extend our `fresh` and `label` functions so that 
@@ -1113,11 +1286,29 @@ number of useful functions that work in an arbitrary monad.
 
 We've already seen this in the `pairs` function
 
+instance (Monad m) => (Functor m) where
+  fmap :: (a -> b) -> m a -> m b
+  fmap f z = do x <- z
+                return (f x)
+
+
+> flibberty f z = do x <- z 
+>                    return (f x)
+
+
+
+
+
 
 > pairs xs ys = do
 >   x <- xs
 >   y <- ys
 >   return (x, y)
+
+
+
+
+
 
 
 What do you think the type of the above is ? (I left out an annotation
