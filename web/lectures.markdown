@@ -13,6 +13,7 @@ title: Lectures
   *1/28*     Functional Reactive Programming                    [html][lec6] [lhs][lhs6]
   *1/30*     Monads                                             [html][lec7] [lhs][lhs7]
   *2/11*     Parser Combinators                                 [html][lec9] [lhs][lhs9]
+  *2/13*     contd.
              Randomized Testing
              Monad Transformers                                 
              Software Transactional Memory                      
