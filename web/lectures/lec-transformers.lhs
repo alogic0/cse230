@@ -7,7 +7,8 @@ title: Monad Transformers
 > import Control.Monad.Error
 > import Control.Monad.State
 > import Control.Monad.Writer
-
+> import Control.Applicative ((<$>))
+> import Debug.Trace
 
 Monads Can Do Many Things
 =========================
@@ -95,12 +96,12 @@ Here the `Raise` is like `Nothing` but it carries a string
 denoting what the exception was. We can make the above a 
 `Monad` much like the `Maybe` monad.
 
-
-
 > instance Monad Exc where
 >   (Raise s ) >>= _ = Raise s
 >   (Result x) >>= f = f x
 >   return           = Result 
+
+**Throwing Exceptions**
 
 Let's write a function to `throwErrorExc` an exception 
 
@@ -135,6 +136,46 @@ Result 42
 ghci> evalExc err
 Raise "Error dividing by Div (Val 2) (Val 3) = 0"
 ~~~~~
+
+
+**Catching Exceptions**
+
+Its all well and good to *throw* an exception, but it would be nice if we
+could gracefully *catch* them as well. For example, wouldn't it be nice if
+we could write a function like this:
+
+> evalExcc ::  Expr -> Exc (Maybe Int)
+> evalExcc e = catchErrorExc (liftM Just (evalExc e)) $ \err -> 
+>                return (trace ("Caught Error: " ++ err) Nothing)
+
+Thus, in `evalExcc` we have just *caught* the exception to return a `Maybe` value
+in the case that something went wrong. Not the most sophisticated form of
+error handling, but you get the picture.
+
+**Exercise** What do you think the *type* of `catchErrorExc` should be?
+
+
+> catchErrorExc :: Exc a -> (String -> Exc a) -> Exc a
+
+And next, lets write it!
+
+> catchErrorExc (Raise  err) f = f err
+> catchErrorExc r@(Result _) _ = r 
+
+And now, we can run it of course...
+
+~~~~~{.haskell}
+ghci> evalExcc ok
+Result (Just 42)
+
+ghci> evalExcc err
+Caught Error: Error dividing by Div (Val 2) (Val 3) = 0
+Result Nothing
+~~~~~
+
+
+
+
 
 Counting Operations Via State Monads
 ------------------------------------
@@ -179,15 +220,18 @@ Armed with the above, we can write a function
 Now, we can write a profiling evaluator
 
 
--- evalST           :: Expr -> ST Int
-
+> evalST           :: Expr -> ST Int
 > evalST (Val n)   = return n
 > evalST (Div x y) = do n <- evalST x
 >                       m <- evalST y
->                       if m == 0 
->                         then throwErrorExc "AAARRCHGGG!!" 
->                         else do {tickST; return (n `div` m)}
+>                       tickST
+>                       return (n `div` m)
 
+<!--                         if m == 0 
+                         then throwErrorExc "AAARRCHGGG!!" 
+                         else do {tickST; return (n `div` m)}
+
+  -->
 
 and by judiciously making the above an instance of `Show`
 
@@ -227,6 +271,10 @@ fun at all! Worse, if later we decide to add yet
 another feature, then we would have to make up yet 
 another mega-monad. 
 
+ 
+  <img src="../static/lec-tx-transforming.png" width="400"/>
+
+
 We shall take a different approach, where we will keep
 *wrapping* or decorating monads with extra features, so 
 that we can take a simple monad, and then add the 
@@ -247,6 +295,28 @@ the desired mega monad. Incidentally, the above should remind
 some of you of the [Decorator Design Pattern][2] and others 
 of [Python's Decorators][3].
 
+Concretely, we will develop mega-monads in *four* steps:
+
+-  **Step 1: Description** First we will define typeclasses that describe the
+   *enhanced* monads, i.e. by describing their *extra* operations,
+
+-  **Step 2: Use** Second we will see how to write functions that *use* the mega
+   monads, simply by using a combination of their features -- here the
+   functions' type signatures will list all the constraints on the
+   corresponding monad,
+
+Next, we need to **create** monads with the special features. We will do
+this by starting with a basic *powerless* monad, and then
+
+-  **Step 3: Add Features** thereby adding extra operations to the simpler
+   monad to make it more powerful, and
+
+-  **Step 4: Preserver Features** Will make sure that the addition of
+   features allows us to *hold onto* the older features, so that at the
+   end, we get a mega monad that is just the *accumulation* of all the
+   added features.
+
+Next, lets look at each step in turn.
 
 Step 1: Describing Monads With Special Features
 -----------------------------------------------
@@ -418,8 +488,8 @@ monad by equipping it with the operations from `MonadST`
 > --getST :: MkSTT (StateST -> m (StateST, StateST))
 >   getST = MkSTT $ \s -> return (s, s)
 >
-> --getST :: StateST -> STT m () 
-> --getST :: StateST -> MkSTT (StateST -> m ((), StateST))
+> --putST :: StateST -> STT m () 
+> --putST :: StateST -> MkSTT (StateST -> m ((), StateST))
 >   putST s = MkSTT (\_ -> return ((), s)) 
 
 Step 4: Preserving Old Features of Monads
@@ -552,9 +622,8 @@ newtype State s a = State {runState :: s -> (a, s)}
   	-- Defined in Control.Monad.State.Lazy
 ~~~~~
 
-The `MonadExc` typeclass corresponds directly with the 
-standard [MonadState][5] typeclass is the proper version  
-of our `MonadST` rendered above. 
+The `MonadST` typeclass that we developed above corresponds directly 
+with the standard [MonadState][5] typeclass.
 
 ~~~~~{.haskell}
 ghci> :info MonadState
@@ -729,6 +798,17 @@ Error: Error dividing by Div (Val 2) (Val 3) = 0
 >           result   = case res of 
 >                        Left s -> "Error: " ++ s
 >                        Right v -> "Value: " ++ show v
+
+Moral of the story
+------------------
+
+  <img src="../static/lec-tx-stacking.png" width="200"/>
+
+There are many useful monads, and if you play your cards right, Haskell
+will let you *stack* them nicely on top of each other, so that you can get
+*mega-monads* that have all the powers of the individual monads. See for
+yourself in *Homework 4*.
+
 
 [1]: http://hackage.haskell.org/packages/archive/base/latest/doc/html/Prelude.html#t:Either
 [2]: http://oreilly.com/catalog/hfdesignpat/chapter/ch03.pdf
