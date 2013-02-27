@@ -807,7 +807,7 @@ Moral of the story
 There are many useful monads, and if you play your cards right, Haskell
 will let you *stack* them nicely on top of each other, so that you can get
 *mega-monads* that have all the powers of the individual monads. See for
-yourself in *Homework 4*.
+yourself in [Homework 4][8].
 
 
 [1]: http://hackage.haskell.org/packages/archive/base/latest/doc/html/Prelude.html#t:Either
@@ -817,3 +817,4 @@ yourself in *Homework 4*.
 [5]: http://hackage.haskell.org/packages/archive/mtl/latest/doc/html/Control-Monad-State-Class.html#t:MonadState
 [6]: http://hackage.haskell.org/packages/archive/mtl/latest/doc/html/Control-Monad-Error-Class.html#t:MonadError
 [7]: http://hackage.haskell.org/packages/archive/transformers/latest/doc/html/Control-Monad-Trans-Writer-Lazy.html#t:Writer
+[8]: homeworks/hw4.html 
