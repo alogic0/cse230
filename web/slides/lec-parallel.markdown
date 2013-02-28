@@ -400,6 +400,179 @@ main = do
 
 > - ... use `evaluate` to force computation to top-level constructor
 
-> - **Parallelism anyone?**
+
+## Solving Many Sudoku Instances
+
+Lets compile with runtime stats ...
+
+~~~~~{.haskell}
+$ ghc -O2 sudoku1.hs -rtsopts
+~~~~~
+
+... and run!
+
+~~~~~{.haskell}
+$ ./sudoku1 sudoku17.1000.txt +RTS -s
+~~~~~
+
+## Solving Many Sudoku Instances
+
+Lets compile with runtime stats ...
+
+~~~~~{.haskell}
+$ ghc -O2 sudoku1.hs -rtsopts
+~~~~~
+
+... and run!
+
+~~~~~{.haskell}
+$ ./sudoku1 sudoku17.1000.txt +RTS -s
+~~~~~
+
+Not too shabby ... (*elapsed* is wall-clock time)
+
+~~~~~{.haskell}
+Total   time    2.11s  (  2.11s elapsed)
+~~~~~
 
 
+## Solving Many Sudoku Instances
+
+~~~~~{.haskell}
+import Sudoku
+import Control.Exception
+import System.Environment
+
+main :: IO ()
+main = do
+    [f]   <- getArgs                    -- get filename containing puzzles
+    grids <- fmap lines $ readFile f    -- parse file into puzzles
+    mapM_ (evaluate . solve) grids      -- solve all puzzles
+~~~~~
+
+**Parallelism anyone?**
+
+> - `solve` is **embarrasingly** parallel?
+
+> - Run different instances on different threads/cores/processes...
+
+## Solving Many Sudoku Instances
+
+> - Parallel programming = **ordering** things
+>   - **Start** evaluating `a` in parallel, 
+>   - **And then** evaluate `b` 
+
+> - That is, all about **sequence** in which to **do** things ...
+
+> - ... Parallel coordination performed in a **monad**
+
+
+## Parallelism with the `Eval` Monad
+
+There's a library for everything ... `Control.Parallel.Strategies` 
+
+1. A Type for Parallel Computations Yielding `a` Values
+
+~~~~~{.haskell}
+data Eval a
+~~~~~
+
+## Parallelism with the `Eval` Monad
+
+There's a library for everything ... `Control.Parallel.Strategies` 
+
+1. A Type for Parallel Computations Yielding `a` Values
+
+~~~~~{.haskell}
+data Eval a
+~~~~~
+
+2. You can **sequence** such computations (or run in parallel) so ...
+
+~~~~~{.haskell}
+instance Monad Eval
+~~~~~
+
+## Parallelism with the `Eval` Monad
+
+There's a library for everything ... `Control.Parallel.Strategies` 
+
+~~~~~{.haskell}
+data Eval a
+instance Monad Eval
+~~~~~
+
+To **execute** a computation
+
+~~~~~{.haskell}
+runEval :: Eval a -> a
+~~~~~
+
+## Parallelism with the `Eval` Monad
+
+There's a library for everything ... `Control.Parallel.Strategies` 
+
+~~~~~{.haskell}
+data Eval a
+instance Monad Eval
+
+runEval :: Eval a -> a
+~~~~~
+
+4. To **create** such computations
+
+~~~~~
+rpar :: a -> Eval a   
+rseq :: a -> Eval a
+~~~~~
+
+> - `rpar x` : Evaluate `x` in **parallel**
+
+> - `rseq x` : Evaluate `x` in **sequence** (wait till done)
+
+## Solving Many Sudoku Instances ... in parallel!
+
+See [sudoku2.hs](https://github.com/simonmar/par-tutorial/blob/master/code/sudoku2.hs)
+
+~~~~~{.haskell}
+main :: IO ()
+main = do
+    [f]   <- getArgs
+    grids <- fmap lines $ readFile f
+
+    let (as, bs) = splitAt (length grids `div` 2) grids
+
+    evaluate $ runEval $ do
+       a <- rpar (deep (map solve as))  -- spawn first half
+       b <- rpar (deep (map solve bs))  -- spawn second half
+       rseq a                           -- wait till done
+       rseq b                           -- wait till done
+       return ()
+~~~~~
+
+> - `deep` forces evaluation (since we're not printing out results...)
+
+
+## Solving Many Sudoku Instances ... in parallel!
+
+Lets compile ...
+
+~~~~~{.haskell}
+$ ghc -O2 sudoku2.hs -rtsopts -threaded
+~~~~~
+
+... and run
+
+~~~~~{.haskell}
+$ ./sudoku2 sudoku17.1000.txt +RTS -N2 -s
+.
+.  
+  SPARKS: 2 (1 converted, 0 overflowed, 0 dud, 0 GC'd, 1 fizzled)
+.
+.
+  Total   time    2.66s  (  1.52s elapsed)
+~~~~~
+
+Speedup = 2.11/1.52 = 1.38 
+
+> - Not so great with 2 cores, whats up?
