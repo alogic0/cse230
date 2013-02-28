@@ -128,6 +128,9 @@ From Pictures To Animations
 
 So far, our pictures have been *static*, nothing moves. 
 
+<img src="../static/Animexample.png" width=100 align="middle"/> 
+<img src="../static/Animexample.png" width=100 align="middle"/> 
+
 Suppose we wanted to create animations. The standard trick 
 for how moving images work is by exploiting *persistence 
 of vision* wherein an illusion of motion is created by
