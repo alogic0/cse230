@@ -52,3 +52,5 @@ for more, start at [haskell.org](http://haskell.org).
   [Vim](http://projects.haskell.org/haskellmode-vim/) 
   [Emacs](http://www.haskell.org/haskellwiki/Haskell_mode_for_Emacs)
 
+- [ThreadScope](http://www.haskell.org/haskellwiki/ThreadScope)
+

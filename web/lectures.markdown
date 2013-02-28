@@ -9,20 +9,17 @@ title: Lectures
    *1/9*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
   *1/14*     Polymorphism                                       [html][lec3] [slides][lec3s] [lhs][lhs3]
   *1/15*     Typeclasses                                        [html][lec4] [lhs][lhs4]
-  *1/23*     Functional Animation                               [html][lec5] [lhs][lec5]
-             Functional Reactivity                              
-             Monads                                             
-             Monads: State                                      
-             Monads: Parser Combinators                         
-             Randomized Testing and QuickCheck                  
-             Monad Transformers                                 
-             Software Transactional Memory                      
+  *1/23*     Functional Animation                               [html][lec5] [lhs][lhs5]
+  *1/28*     Functional Reactive Programming                    [html][lec6] [lhs][lhs6]
+  *1/30*     Monads                                             [html][lec7] [lhs][lhs7]
+  *2/11*     Parser Combinators                                 [html][lec9] [lhs][lhs9]
+  *2/13*     contd.
+  *2/20*     Randomized Testing                                 [html][lec10] [lhs][lhs10]
+  *2/25*     Monad Transformers                                 [html][lec11] [lhs][lhs11]
              Data Parallelism
-             Cloud Haskell
+             Software Transactional Memory                      
              Lambda Calculus                                    
              Hindley-Milner Type Inference                      
-             Fancy Types I
-             Fancy Types II
  
 ----------------------------------------------------------------------------------
 
@@ -42,6 +39,25 @@ title: Lectures
 
 [lec5]: lectures/lec-animation.html
 [lhs5]: lectures/lec-animation.lhs
+
+[lec6]: lectures/lec-reactive.html
+[lhs6]: lectures/lec-reactive.lhs
+
+[lec7]: lectures/lec-monads.html
+[lhs7]: lectures/lec-monads.lhs
+
+[lec9]: lectures/lec-parsers.html
+[lhs9]: lectures/lec-parsers.lhs
+
+[lec10]: lectures/lec-quickcheck.html
+[lhs10]: lectures/lec-quickcheck.lhs
+
+[lec11]: lectures/lec-transformers.html
+[lhs11]: lectures/lec-transformers.lhs
+
+
+
+
 
 
 
