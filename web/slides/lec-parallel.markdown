@@ -532,7 +532,7 @@ rseq :: a -> Eval a
 
 ## Solving Many Sudoku Instances ... in parallel!
 
-See [sudoku2.hs](https://github.com/simonmar/par-tutorial/blob/master/code/sudoku2.hs)
+See [sudoku2.hs](https://github.com/ranjitjhala/par-tutorial/blob/master/code/sudoku2.hs)
 
 ~~~~~{.haskell}
 main :: IO ()
@@ -895,7 +895,396 @@ x `using` s = runEval (s x)
 > 1. `s x :: Eval a`, says how to evaluate `x`
 > 2. `runEval (s x)`, then executes the plan yielding the value
 
+## Strategies and Lazy Evaluation
 
-EXPLAIN `x using s == x` modulo lazy semantics
+~~~~~{.haskell}
+using :: a -> Strategy a -> a
+x `using` s = runEval (s x)
+~~~~~
+
+### Note That
+
+~~~~~{.haskell}
+x `using` s == x
+~~~~~
+
+> - Huh? The *difference* is **lazy evaluation**
+
+> - LHS : *evaluated* per strategy `s`
+
+> - RHS : *evaluated* (or not) per usual lazy execution model
+
+> - Bit tricky to reason about!
+
+## Parallel List Strategies
+
+> - `parMap` = **algorithm** + **strategy**
+
+> - `parMap` = `map` + **strategy**
+
+
+## Parallel List Strategies
+
+- `parMap` = **algorithm** + **strategy**
+
+- `parMap` = `map` + **strategy**
+
+~~~~~{.haskell}
+parMap f xs = map f xs `using` strategy
+~~~~~
+
+> - But what is the `strategy` ?
+
+> - `strategy` = *Evaluate List Elements in Parallel*
+
+> - Lets capture that as code!
+
+
+## Parallel List Strategies
+
+- `parMap` = **algorithm** + **strategy**
+
+- `parMap` = `map` + **strategy**
+
+~~~~~{.haskell}
+parMap f xs = map f xs `using` strategy
+~~~~~
+
+### What is `strategy` ?
+
+> - **Input** a strategy for evaluating `a` 
+
+> - **Output** a strategy for `[a]`
+
+> - **Strategies Composable** from sub-strategies 
+
+~~~~~{.haskell}
+parList              :: Strategy a -> Strategy [a]
+
+parList xstrat []	 = return []
+parList strat (x:xs) = do x'  <- rpar (x `using` xstrat)                            -- > 
+                          xs' <- parList xstrat xs
+                          return (x' : xs')
+~~~~~
+
+## Parallel List Strategies
+
+- `parMap` = **algorithm** + **strategy**
+
+- `parMap` = `map` + **strategy**
+
+~~~~~{.haskell}
+parMap f xs = map f xs `using` parList rseq 
+~~~~~
+
+> - **Each element** evaluated with `rseq` but list in parallel
+
+### What is `strategy` ?
+
+> - **Input** a strategy for evaluating `a` 
+> - **Output** a strategy for `[a]`
+
+~~~~~{.haskell}
+parList              :: Strategy a -> Strategy [a]
+~~~~~
+
+
+
+## Sudoku: Revisited With Parallel List Strategy
+
+Lets use `parList` to solve sudoku in parallel [sudoku4.hs](https://github.com/ranjitjhala/par-tutorial/blob/master/code/sudoku4.hs)
+
+~~~~~{.haskell}
+main :: IO ()
+main = do
+    [f]     <- getArgs
+    grids   <- fmap lines $ readFile f
+    evaluate $ deep $ runEval $ map solve grids `using` parList rseq 
+~~~~~
+
+**Note** Entire *parallelism secret sauce* reduced to `using parList rseq`
+
+~~~~~{.haskell}
+$ ghc -O2 sudoku4.hs -rtsopts
+
+$ ./sudoku4 sudoku17.1000.txt +RTS -N10 -s
+  SPARKS: 1000 (1000 converted, 0 overflowed, 0 dud, 0 GC'd, 0 fizzled)
+  Total   time    5.16s  (  0.46s elapsed)
+~~~~~
+
+
+## Next: Parallel Haskell In Action!
+
+1. (Parallel) Sudoku Solver
+
+- Treat algorithm as a black box...
+
+2. **(Parallel) KMeans Clustering** 
+
+- Need to know how algorithm works...
+
+
+## KMeans Clustering in Pictures
+
+**Problem:** Given a set of points, *group* into **K** clusters.
+
+## KMeans: Step 0, Guess K Arbitrary Centers 
+
+**Problem:** Given a set of points, *group* into **K** clusters.
+
+<img src="../static/kmeans_step_1.svg" width="300"/>
+
+Centers chosen arbitrarily
+
+## KMeans: Step 1, Map each point to NEAREST Center
+
+**Problem:** Given a set of points, *group* into **K** clusters.
+
+<img src="../static/kmeans_step_2.svg" width="300"/>
+
+### For each point: 
+
+> - **Compute distance** between point and **each** center
+
+> - **Assign** point to **nearest** center
+
+> - **Result** updated clustering 
+
+
+## KMeans: Step 2, Update Centers To Cluster CENTROIDS
+
+**Problem:** Given a set of points, *group* into **K** clusters.
+
+<img src="../static/kmeans_step_3.svg" width="300"/>
+
+### For each clustering
+
+> - **Update Center** to be **centroid** of cluster 
+
+> - **Centroid** is the *average* of all points in cluster
+
+## KMeans: Repeat 1, 2 Until Convergence
+
+
+<img src="../static/kmeans_step_4.svg" width="300"/>
+
+> - **Return** stabilized clusters as output
+
+## KMeans: Code
+
+[kmeans.hs](https://github.com/ranjitjhala/par-tutorial/blob/master/code/kmeans/kmeans.hs)
+
+### Representing 2-D Points
+
+~~~~~{.haskell}
+data Vector = Vector Double Double
+~~~~~
+
+### Operations on Vectors 
+
+~~~~~{.haskell}
+zeroVector :: Vector 
+zeroVector = Vector 0 0
+
+addVector :: Vector -> Vector -> Vector
+addVector (Vector a b) (Vector c d) = Vector (a+c) (b+d)
+
+sqDistance :: Vector -> Vector -> Double
+sqDistance (Vector x1 y1) (Vector x2 y2) = ((x1-x2)^2) + ((y1-y2)^2)
+~~~~~
+
+## KMeans: Code
+
+[kmeans.hs](https://github.com/ranjitjhala/par-tutorial/blob/master/code/kmeans/kmeans.hs)
+
+### Representing Clusters
+
+~~~~~{.haskell}
+data Cluster = Cluster { clId    :: Int    -- ID     of cluster 0..K
+                       , clCount :: Int    -- NUMBER of points in cluster
+                       , clSum   :: Vector -- SUM    of points in cluster
+                       , clCent  :: Vector -- CENTER of cluster
+                       }
+~~~~~
+
+## KMeans: Code
+
+[kmeans.hs](https://github.com/ranjitjhala/par-tutorial/blob/master/code/kmeans/kmeans.hs)
+
+### Operations on Clusters
+
+~~~~~{.haskell}
+makeCluster :: Int -> [Vector] -> Cluster
+makeCluster clid vecs = Cluster { clId     = clid
+                                , clCount  = count 
+                                , clSum    = vecsum
+                                , clCent   = centre }
+   where 
+     vecsum@(Vector a b) = foldl' addVector zeroVector vecs
+     centre              = Vector (a / fromIntegral count) (b / fromIntegral count)
+     count               = length vecs
+  
+combineClusters c1 c2 =
+  Cluster {clId     = clId c1,
+           clCount  = count,
+           clSum    = vecsum,
+           clCent   = Vector (a / fromIntegral count) (b / fromIntegral count)}
+  where count = clCount c1 + clCount c2
+        vecsum@(Vector a b)  = addVector (clSum c1) (clSum c2)
+~~~~~
+
+## KMeans: Code (Sequential)
+
+Top-level Clustering Algorithm
+
+~~~~~{.haskell}
+kmeans_seq nclusters points initClusters = do
+  let
+      loop n clusters | n > tooMany = do printf "giving up."; return clusters
+      loop n clusters = do
+        let clusters' = step nclusters clusters points
+        if clusters' == clusters
+           then return clusters
+           else loop (n+1) clusters'
+  --
+  loop 0 initClusters            
+~~~~~         
+
+Each `step` is
+
+~~~~~{.haskell}
+step :: Int -> [Cluster] -> [Vector] -> [Cluster]
+step nclusters clusters points = makeNewClusters (assign nclusters clusters points)
+
+makeNewClusters     :: Array Int [Vector] -> [Cluster]
+makeNewClusters arr = [ makeCluster i ps | (i, ps) <- assocs arr, not (null ps) ]
+~~~~~
+
+## KMeans: Code (Sequential)
+
+Lets run it!
+
+~~~~~{.haskell}
+$ ghc -O2 -threaded -rtsopts -eventlog kmeans.hs
+$ ./kmeans seq
+...
+Total time: 0.65
+~~~~~
+
+**Note** Program prints out its own time to ignore sequential IO
+
+> - How shall we parallelize?
+
+
+## KMeans: Code (Parallel)
+
+> - **Idea:** `assign` each point to cluster in parallel 
+
+> - **Problem:** Not *enough* work for a spark ...
+
+> - **Solution?**
+
+## KMeans: Code (Parallel)
+
+- **Idea** `assign` each point to cluster in parallel 
+
+- **Problem:** Not *enough* work for a spark ...
+
+> - **Solution:** Bundle `points` in **chunks** ...
+
+> - ... Process `chunks` in parallel
+
+
+## KMeans: Code (Parallel)
+
+~~~~~{.haskell}
+kmeans_strat :: Int -> Int -> [Vector] -> [Cluster] -> IO [Cluster]
+kmeans_strat numChunks nclusters points clusters = do
+  let chunks = split numChunks points
+  let
+      loop n clusters | n > tooMany = do printf "giving up."; return clusters
+      loop n clusters = do
+        let  new_clusterss = map (step nclusters clusters) chunks
+                               `using` parList rdeepseq
+             clusters'     = reduce nclusters new_clusterss
+        if clusters' == clusters
+           then return clusters
+           else loop (n+1) clusters'
+  --
+  loop 0 clusters
+~~~~~
+
+> 1. Break into `chunks`
+> 2. `map` the `step` over each `chunk`
+> 3. `reduce` the resulting `new_clusterss` from chunks into single `clusters'`
+
+> **Note** Can just drop the `using` and get sequential code
+
+
+## KMeans: Code (Parallel)
+
+`reduce` cluster-lists by `combine`-ing clusters
+
+~~~~~{.haskell}
+reduce :: Int -> [[Cluster]] -> [Cluster]
+reduce nclusters css
+  = concatMap combine                        -- 4. combine all sub-clusters of each ID 
+    $ elems                                  -- 3. flatten into [[Cluster]], each inner list same ID
+    $ accumArray (flip (:)) [] (0,nclusters) -- 2. gather into Array ID [Cluster]
+    $ [ (clId c, c) | c <- concat css]       -- 1. group all clusters by ID
+ where
+   combine [] = []
+   combine (c:cs) = [foldr combineClusters c cs]
+~~~~~
+
+## KMeans: Code (Parallel)
+
+Lets run it!
+
+~~~~~{.haskell}
+$ ./kmeans seq
+...
+Total time: 0.65
+
+$ ./kmeans strat 800 +RTS -N2
+Total time: 0.67
+
+$ ./kmeans strat 800 +RTS -N3
+Total time: 0.34
+
+$ ./kmeans strat 800 +RTS -N4
+Total time: 0.28
+
+$ ./kmeans strat 800 +RTS -N6
+Total time: 0.16
+
+$ ./kmeans strat 800 +RTS -N8
+Total time: 0.14
+~~~~~
+
+## KMeans: Code (Parallel)
+
+> - Why diminishing returns?
+
+> - Play around with chunk sizes (more/less than 800) ?
+
+> - **Exercise** Can anything else be parallelized?
+
+## Next: Parallel Haskell In Action!
+
+1. (Parallel) Sudoku Solver
+
+- Treat algorithm as a black box...
+
+2. (Parallel) KMeans Clustering 
+
+- Need to know how algorithm works...
+
+> - Above had **Implicit** dependencies (resolved by run-time)
+
+> - Requires understanding of **sparks** and **laziness* and **GC**
+
+> - Next: **explicit dataflow parallelism** 
+
 
 
