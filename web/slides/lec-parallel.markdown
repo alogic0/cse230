@@ -1506,3 +1506,4 @@ Run it!
 
 > - Depends on the **structure** of input 
 
+p 31 - p 33 of par-tutorial.pdf
