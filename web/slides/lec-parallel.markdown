@@ -1280,11 +1280,229 @@ Total time: 0.14
 
 - Need to know how algorithm works...
 
-> - Above had **Implicit** dependencies (resolved by run-time)
-
-> - Requires understanding of **sparks** and **laziness* and **GC**
-
-> - Next: **explicit dataflow parallelism** 
+## Implicit v. Explicit Parallelism
 
 
+### Implicit Parallelism 
+
+> - `Eval` has **implicit** data dependencies
+>   - Run-time uses `Strategy` hints for evaluation
+
+> - Requires understanding **laziness** and **sparks** and **GC**
+>   - Pass an **unevaluated** computation to par,
+>   - Ensure that its value **is not** required for a while, and
+>   - Ensure that the result **is shared** by the rest of the program.
+
+> - Mistakes lead to **missed opportunities** (*fizzled* or *dud* sparks)
+
+## Implicit v. Explicit Parallelism
+
+Alternative: **Explicit dataflow parallelism** 
+
+> - Specify **dependencies**
+
+> - Enforce blocking
+
+> - Enforce parallelism
+
+> - ... but more *verbose*
+
+> - ... can be *hidden* in libraries (like `Strategy`)
+
+
+## Explicit Parallelism
+
+The `Par` Monad
+
+<br>
+
+~~~~~{.haskell}
+newtype Par a
+
+instance Monad Par
+~~~~~
+
+## Explicit Parallelism
+
+
+Explicitly Force Task Creation
+
+<br>
+
+~~~~~{.haskell}
+fork :: Par () -> Par ()
+~~~~~
+
+> - `fork e` forces `e` to be computed in a **forked child task**
+
+> - Builds a **tree** of computations (think *family* tree...)
+
+> - How to **communicate** across tasks?
+
+## Explicit Parallelism
+
+<br>
+
+Tasks Communicate Via Shared Variables
+
+~~~~~{.haskell}
+data IVar a -- reference to `a` cell
+~~~~~
+
+> - **Future** or **Promise** : Will hold the `a` in future ...
+
+<br>
+
+Operations on Shared Variables
+
+~~~~~{.haskell}
+new :: Par (IVar a)                         -- create
+put :: NFData a => IVar a -> a -> Par ()    -- write-once
+get :: IVar a -> Par a                      -- blocking read
+~~~~~
+
+> - `NFData` = fully-evaluated data stored in shared variables
+> - No wierdness due to laziness...
+
+## Explicit Parallelism
+
+<br>
+
+To Actually Execute the Action
+
+~~~~~{.haskell}
+runPar :: Par a -> a 
+~~~~~
+
+
+## Sudoku Revisited
+
+See [sudoku-par2.hs](https://github.com/ranjitjhala/par-tutorial/blob/master/code/sudoku-par2.hs)
+
+~~~~~{.haskell}
+main :: IO ()
+main = do
+    [f]   <- getArgs
+    grids <- fmap lines $ readFile f
+    let (as,bs) = splitAt (length grids `div` 2) grids
+    print $ length $ filter isJust $ runPar $ do
+       i1 <- new                    -- (1)  
+       i2 <- new                     
+       fork $ put i1 (map solve as) -- (2) 
+       fork $ put i2 (map solve bs) 
+       as' <- get i1                -- (3)
+       bs' <- get i2                 
+       return (as' ++ bs')
+~~~~~
+
+> 1. Create `IVar` for each half
+> 2. Fork task for each half
+> 3. Wait until each half finishes 
+
+
+## Explicit Parallelism Patterns: `spawn`
+
+> - `spawn` forks a computation in parallel... 
+
+> - returns an `IVar` on which to **wait for** result
+
+~~~~~{.haskell}
+spawn :: NFData a => Par a -> Par (IVar a)
+spawn p = do i <- new                       -- > Create IVar 
+             fork (do x <- p; put i x)      -- > Fork process to write IVar
+             return i                       -- > Return IVar
+~~~~~
+
+## Sudoku Revisited With `spawn`
+
+See [sudoku-par2-spawn.hs](https://github.com/ranjitjhala/par-tutorial/blob/master/code/sudoku-par2-spawn.hs)
+
+~~~~~{.haskell}
+main = do
+    [f] <- getArgs
+    grids <- fmap lines $ readFile f
+    let (as,bs) = splitAt (length grids `div` 2) grids
+    print $ length $ filter isJust $ runPar $ do
+       i1  <- spawn (return (map solve as)) 
+       i2  <- spawn (return (map solve bs)) 
+       as' <- get i1
+       bs' <- get i2
+       return (as' ++ bs')
+~~~~~
+
+Run it! (Same as `sudoku2` or `sudoku-par2`)
+
+~~~~~{.haskell}
+./sudoku-par2-spawn sudoku17.1000.txt +RTS -N2 -s
+  Total   time    2.44s  (  1.46s elapsed)
+~~~~~
+
+## Explicit Parallelism Patterns: `parMap`
+
+How would we execute a **list of tasks** in parallel?
+
+## Explicit Parallelism Patterns: `parMap`
+
+How would we execute a **list of tasks** in parallel?
+
+Given:
+
+~~~~~{.haskell}
+f             :: (a -> b)
+[x1, ..., xn] :: [a]
+~~~~~
+
+> - How to compute [f x1, ..., f xn] in parallel ?
+
+> - What is the **type** of the result?
+
+> - `Par [b]`
+
+## Explicit Parallelism Patterns: `parMap`
+
+How would we execute a **list of tasks** in parallel?
+
+~~~~~{.haskell}
+parMap :: (NFData b) => (a -> b) -> [a] -> Par [b]
+parMap f xs = do ivs <- mapM (spawn . return . f)                       -- >  
+                 mapM get ivs
+~~~~
+
+> 1. `spawn` each `f x` in list in parallel ...
+> 2. wait-for each variable ...
+
+## Sudoku Revisited With `parMap`
+
+See [sudoku-par3.hs](https://github.com/ranjitjhala/par-tutorial/blob/master/code/sudoku-par3.hs)
+
+~~~~~{.haskell}
+main :: IO ()
+main = do
+    [f] <- getArgs
+    grids <- fmap lines $ readFile f
+    print (length (filter isJust (runPar $ parMap solve grids)))
+~~~~~
+
+Run it!
+
+~~~~~{.haskell}
+./sudoku-par3 sudoku17.1000.txt +RTS -N10 -s
+  Total   time    3.38s  (  0.38s elapsed)
+~~~~~
+
+## Regular vs Irregular Parallelism
+
+<br>
+
+### So far: Regular Parallelism 
+
+> - Parallelism with *predictable shape*
+
+> - **Static** compute **2 parts** in parallel
+
+> - **Dynamic** compute **list** elements in parallel
+
+### Irregular Parallelism
+
+> - Depends on the **structure** of input 
 
