@@ -579,9 +579,15 @@ Speedup = 2.11/1.52 = 1.38
 
 ## Solving Many Sudoku Instances ... in parallel!
 
-**TODO:** Static 2-SPLIT Picture
+~~~~~{.haskell}
+$ threadscope sudoku2.eventlog
+~~~~~
 
-    threadscope sudoku2.eventlog
+<br>
+
+<img src="../static/sudoku2.png" width="600"/>
+
+Second core is **idling** towards the end...
 
 ## Static v. Dynamic Partitions
 
@@ -606,9 +612,13 @@ Speedup = 2.11/1.52 = 1.38
 
 ## GHC's Automatic Balancing: Sparks & Work Stealing
 
+<br> 
+
 ~~~~~{.haskell}
 rpar e
 ~~~~~
+
+<br> 
 
 ### Spark
 
@@ -623,24 +633,28 @@ rpar e
 
 ## Dynamic Partitioning 
 
+<br> 
+
 ~~~~~{.haskell}
 rpar e
 ~~~~~
 
+<br> 
+
 ### Spark
 
-> - **Spark** = Argument to `rpar` (e.g. `e`)
-> - Super lightweight *thread*
+- **Spark** = Argument to `rpar` (e.g. `e`)
+- Super lightweight *thread*
 
 ### Work Stealing
 
-> - Runtime *collects* sparks in a *pool*
-> - Lightweight (a single pointer), can create *thousands* of sparks
-> - Assigns *spark* to *idle* cores via *work stealing* 
+- Runtime *collects* sparks in a *pool*
+- Lightweight (a single pointer), can create *thousands* of sparks
+- Assigns *spark* to *idle* cores via *work stealing* 
 
 ### Dynamic Partitioning
 
-- Use `rpar` to fire up bajillion sparks on input data!
+- Use `rpar` to fire up **bajillion sparks** on input data!
 
 
 ## Dynamic Partitioning for Sudoku Solver 
@@ -663,9 +677,7 @@ main = do
        return ()
 ~~~~~
 
-> - Solve **each** instance in **different** spark...
-
-> - How?
+> - How to solve **each** instance in **different** spark ?
 
 
 ## Dynamic Partitioning for Sudoku Solver 
@@ -680,8 +692,8 @@ main = do
     evaluate $ runEval $ parSolve grids 
 ~~~~~
 
-> - Solve **each** instance in **different** spark...
-> - ... by **recursively `rpar` each** puzzle
+- How to solve **each** instance in **different** spark ?
+- ... by (recursively) `rpar` each puzzle
 
 ~~~~~{.haskell}
 parSolve []       = return []
@@ -747,8 +759,8 @@ $ ./sudoku3 sudoku17.1000.txt +RTS -N2 -s
 
 > - Created 1000 sparks (1 per puzzle)
 > - Each spark was *converted* into real parallelism at runtime
-> - Sparks *pruned* have been removed from the spark pool by the runtime system, 
->   - found to be already evaluated, or 
+> - *Pruned sparks* removed from pool by the runtime 
+>   - found to be *already evaluated*, or 
 >   - because they were found to be not used by program.
 
 
@@ -758,9 +770,13 @@ Can release the genie to solve sudoku in parallel [sudoku3.hs](https://github.co
 
 Not too bad, lets see if the cores are balanced...
 
-**TODO:** Dynamic 2-SPLIT Picture
+~~~~~{.haskell}
+$ threadscope sudoku3.eventlog
+~~~~~
 
-    threadscope sudoku3.eventlog
+<br>
+
+<img src="../static/sudoku3.png" width="600"/>
 
 ## Dynamic Partitioning With a Parallel Map
 
@@ -771,25 +787,18 @@ Can just throw more cores at it ... **5.4 x speedup**
 ~~~~~{.haskell}
 $ ./sudoku3 sudoku17.1000.txt +RTS -N2 -s
   Total   time    3.24s  (  1.64s elapsed)
-
 $ ./sudoku3 sudoku17.1000.txt +RTS -N3 -s
   Total   time    3.47s  (  1.17s elapsed)
-
 $ ./sudoku3 sudoku17.1000.txt +RTS -N4 -s
 Total   time    3.30s  (  0.84s elapsed)
-
 $ ./sudoku3 sudoku17.1000.txt +RTS -N6 -s
   Total   time    3.96s  (  0.67s elapsed)
-
 $ ./sudoku3 sudoku17.1000.txt +RTS -N8 -s
   Total   time    4.64s  (  0.61s elapsed)
-
 $ ./sudoku3 sudoku17.1000.txt +RTS -N10 -s
   Total   time    4.77s  (  0.50s elapsed)
-
 $ ./sudoku3 sudoku17.1000.txt +RTS -N12 -s
   Total   time    5.28s  (  0.47s elapsed)
-
 $ ./sudoku3 sudoku17.1000.txt +RTS -N14 -s
   Total   time    5.68s  (  0.44s elapsed)
 ~~~~~
@@ -827,28 +836,25 @@ Co-ordinating that many cores not **always** worth it...
 
 ## Parallel Strategies
 
-~~~~~{.haskell}
-type Strategy a = a -> Eval a
-~~~~~
-
-**Strategy:** A function that determines **how to** `Eval` an `a` value.
-
-## Parallel Strategies
-
 - We just saw how (parallel) computation pattern was bottled as `parMap`
 
-- Generalize the **bottling** using `Strategies`
+- Generalize the **bottling** using **Strategies**
 
 ### Parallel Strategies: Functions that Determine How To Eval 
 
+<br>
+
 ~~~~~{.haskell}
 type Strategy a = a -> Eval a
 ~~~~~
 
+<br>
 
 > - Lets see some example strategies...
 
 ## Parallel Strategies
+
+<br>
 
 ~~~~~{.haskell}
 type Strategy a = a -> Eval a
@@ -857,15 +863,15 @@ type Strategy a = a -> Eval a
 Some Example `Strategy`s ...
 
 ~~~~~{.haskell}
-rpar :: a -> Eval a     -- Eval-uate a in PARALLEL with current thread
-rseq :: a -> Eval a     -- Eval-uate a in SEQUENCE in   current thread
+rpar :: a -> Eval a     -- Evaluate a in PARALLEL with current thread
+rseq :: a -> Eval a     -- Evaluate a in SEQUENCE in   current thread
 ~~~~~
 
 ... and so!
 
 ~~~~~{.haskell}
-rpar :: Strategy a      -- Eval-uate a in PARALLEL with current thread
-rseq :: Strategy a      -- Eval-uate a in SEQUENCE in   current thread
+rpar :: Strategy a      -- Evaluate a in PARALLEL with current thread
+rseq :: Strategy a      -- Evaluate a in SEQUENCE in   current thread
 ~~~~~
 
 ## Parallel Strategies
@@ -888,12 +894,14 @@ rdeepseq x = rseq (deep x)
 ## Using Strategies
 
 ~~~~~{.haskell}
-using :: a -> Strategy a -> a
+using       :: a -> Strategy a -> a
+
 x `using` s = runEval (s x)
 ~~~~~
 
-> 1. `s x :: Eval a`, says how to evaluate `x`
-> 2. `runEval (s x)`, then executes the plan yielding the value
+> 1. `s x :: Eval a`, says **how to** evaluate `x`
+
+> 2. `runEval (s x)`, then **executes the plan** yielding the value `x`
 
 ## Strategies and Lazy Evaluation
 
@@ -902,7 +910,11 @@ using :: a -> Strategy a -> a
 x `using` s = runEval (s x)
 ~~~~~
 
+<br>
+
 ### Note That
+
+<br>
 
 ~~~~~{.haskell}
 x `using` s == x
@@ -953,9 +965,7 @@ parMap f xs = map f xs `using` strategy
 ### What is `strategy` ?
 
 > - **Input** a strategy for evaluating `a` 
-
 > - **Output** a strategy for `[a]`
-
 > - **Strategies Composable** from sub-strategies 
 
 ~~~~~{.haskell}
@@ -981,8 +991,8 @@ parMap f xs = map f xs `using` parList rseq
 
 ### What is `strategy` ?
 
-> - **Input** a strategy for evaluating `a` 
-> - **Output** a strategy for `[a]`
+- **Input** a strategy for evaluating `a` 
+- **Output** a strategy for `[a]`
 
 ~~~~~{.haskell}
 parList              :: Strategy a -> Strategy [a]
@@ -1002,7 +1012,7 @@ main = do
     evaluate $ deep $ runEval $ map solve grids `using` parList rseq 
 ~~~~~
 
-**Note** Entire *parallelism secret sauce* reduced to `using parList rseq`
+**Note:** Entire *parallelism secret sauce* reduced to `using parList rseq`
 
 ~~~~~{.haskell}
 $ ghc -O2 sudoku4.hs -rtsopts
