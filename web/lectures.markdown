@@ -17,6 +17,7 @@ title: Lectures
   *2/20*     Randomized Testing                                 [html][lec10] [lhs][lhs10]
   *2/25*     Monad Transformers                                 [html][lec11] [lhs][lhs11]
   *2/27*     Data Parallelism                                   [html][lec12] [code][cod12]
+   *3/4*     contd.
              Software Transactional Memory                      
              Lambda Calculus                                    
              Hindley-Milner Type Inference                      
@@ -56,7 +57,7 @@ title: Lectures
 [lhs11]: lectures/lec-transformers.lhs
 
 [lec12]: slides/lec-parallel.markdown.slides.html
-[cod12]: https://github.com/simonmar/par-tutorial
+[cod12]: https://github.com/ranjitjhala/par-tutorial
 
 
 
