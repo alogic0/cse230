@@ -10,18 +10,11 @@ Before starting this part of the assignment,
 1. Install the following packages 
 
 ~~~~~{.haskell}
-$ cabal install parsec3
 $ cabal install mtl
 $ cabal install quickcheck
 ~~~~~
 
 2. Learn to read the [documentation](http://hackage.haskell.org)
-
-3. Download the test files 
-   [test.imp](/static/test.imp),
-   [fact.imp](/static/fact.imp), 
-   [abs.imp](/static/abs.imp), 
-   [times.imp](/static/times.imp).
 
 To complete this homework, download [this file](/homeworks/hw4.lhs) 
 as plain text and answer each question, filling in code where it says
@@ -35,12 +28,7 @@ questions about the assignment, email Pat at prondon@cs.ucsd.edu.
 
 > {-# LANGUAGE TypeSynonymInstances, FlexibleContexts, NoMonomorphismRestriction, OverlappingInstances, FlexibleInstances #-}
 
-> import Data.Map hiding (map)
-
-> import Text.Parsec hiding (State, between)
-> import Text.Parsec.Combinator hiding (between)
-> import Text.Parsec.Char
-> import Text.Parsec.String
+> import Data.Map hiding (map, foldr)
 
 > import Control.Monad.State
 > import Control.Monad.Error
@@ -53,67 +41,7 @@ questions about the assignment, email Pat at prondon@cs.ucsd.edu.
 
 > quickCheckN n = quickCheckWith $ stdArgs { maxSuccess = n}
 
-Problem 1: A Parser for WHILE 
-=============================
-
-It is rather tedious to have to specify individual programs as Haskell
-values. For this problem, you will use parser combinators to build a parser
-for the WHILE language from the previous problem.
-
-Parsing Constants
------------------
-
-First, we will write parsers for the `Value` type
-
-> valueP :: Parser Value
-> valueP = intP <|> boolP
-
-To do so, fill in the implementations of
-
-> intP :: Parser Value
-> intP = error "TBD" 
-
-Next, define a parser that will accept a 
-particular string `s` as a given value `x`
-
-> constP :: String -> a -> Parser a
-> constP s x = error "TBD"
-
-and use the above to define a parser for boolean values 
-where `"true"` and `"false"` should be parsed appropriately.
-
-> boolP :: Parser Value
-> boolP = error "TBD"
-
-Continue to use the above to parse the binary operators
-
-> opP :: Parser Bop 
-> opP = error "TBD"
- 
-
-Parsing Expressions 
--------------------
-
-Next, the following is a parser for variables, where each 
-variable is one-or-more uppercase letters. 
-
-> varP :: Parser Variable
-> varP = many1 upper
-
-Use the above to write a parser for `Expression` values
-
-> exprP :: Parser Expression
-> exprP = error "TBD"
-
-Parsing Statements
-------------------
-
-Next, use the expression parsers to build a statement parser
-
-> statementP :: Parser Statement
-> statementP = error "TBD" 
-
-Problem 2: An Interpreter for WHILE++ 
+Problem 1: An Interpreter for WHILE++ 
 =====================================
 
 Previously, you wrote a simple interpreter for *WHILE*.
@@ -289,35 +217,8 @@ Again, the program as a Haskell value:
 >                             "E"
 >                             (Assign "Z" $ Op Plus (Var "E") (Var "A"))]
 
-Hooking Up the Parser and Interpreter
--------------------------------------
 
-Finally, we can put the parser and evaluator together in 
-the end-to-end interpreter function
-
-> runFile s = do p <- parseFromFile statementP s
->                case p of
->                  Left err   -> print err
->                  Right stmt -> run stmt
->
-> run :: Statement -> IO ()
-> run stmt = do let (st, _, _) = execute empty stmt 
->               putStrLn $ "Output Store:" ++ show st 
-
-When you are done you should see the following at the ghci prompt
-
-~~~~~{.haskell}
-ghci> runFile "test.imp"
-Output Store:
-fromList [("X",IntVal 0),("Y",IntVal 10)]
-
-ghci> runFile "fact.imp" 
-Output Store:
-fromList [("F",IntVal 2),("N",IntVal 0),("X",IntVal 1),("Z",IntVal 2)]
-~~~~~
-
-
-Problem 3: Circuit Testing
+Problem 2: Circuit Testing
 ==========================
 
 Credit: [UPenn CIS552][1]
