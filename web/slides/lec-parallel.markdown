@@ -1042,7 +1042,7 @@ $ ./sudoku4 sudoku17.1000.txt +RTS -N10 -s
 
 **Problem:** Given a set of points, *group* into **K** clusters.
 
-<img src="../static/kmeans_step_1.svg" width="300"/>
+<img src="../static/kmeans_step_1.png" width="300"/>
 
 Centers chosen arbitrarily
 
@@ -1050,33 +1050,31 @@ Centers chosen arbitrarily
 
 **Problem:** Given a set of points, *group* into **K** clusters.
 
-<img src="../static/kmeans_step_2.svg" width="300"/>
+<img src="../static/kmeans_step_2.png" width="300"/>
 
 ### For each point: 
 
-> - **Compute distance** between point and **each** center
-
-> - **Assign** point to **nearest** center
-
-> - **Result** updated clustering 
+> - **Find Distance:** between point and **each** center
+> - **Assign:** point to **nearest** center
+> - **Result:** updated clustering 
 
 
-## KMeans: Step 2, Update Centers To Cluster CENTROIDS
+## KMeans: Step 2, Move Centers To Cluster CENTROIDS
 
 **Problem:** Given a set of points, *group* into **K** clusters.
 
-<img src="../static/kmeans_step_3.svg" width="300"/>
+<img src="../static/kmeans_step_3.png" width="300"/>
 
 ### For each clustering
 
 > - **Update Center** to be **centroid** of cluster 
 
-> - **Centroid** is the *average* of all points in cluster
+> - **Centroid** equals *average* of all points in cluster
 
 ## KMeans: Repeat 1, 2 Until Convergence
 
 
-<img src="../static/kmeans_step_4.svg" width="300"/>
+<img src="../static/kmeans_step_4.png" width="300"/>
 
 > - **Return** stabilized clusters as output
 
@@ -1119,8 +1117,6 @@ data Cluster = Cluster { clId    :: Int    -- ID     of cluster 0..K
 
 ## KMeans: Code
 
-[kmeans.hs](https://github.com/ranjitjhala/par-tutorial/blob/master/code/kmeans/kmeans.hs)
-
 ### Operations on Clusters
 
 ~~~~~{.haskell}
@@ -1143,9 +1139,7 @@ combineClusters c1 c2 =
         vecsum@(Vector a b)  = addVector (clSum c1) (clSum c2)
 ~~~~~
 
-## KMeans: Code (Sequential)
-
-Top-level Clustering Algorithm
+## KMeans: Code (Sequential) Top-level Algorithm
 
 ~~~~~{.haskell}
 kmeans_seq nclusters points initClusters = do
@@ -1353,7 +1347,7 @@ fork :: Par () -> Par ()
 
 <br>
 
-Tasks Communicate Via Shared Variables
+Tasks Communicate Via **Shared Variables**
 
 ~~~~~{.haskell}
 data IVar a -- reference to `a` cell
@@ -1361,9 +1355,21 @@ data IVar a -- reference to `a` cell
 
 > - **Future** or **Promise** : Will hold the `a` in future ...
 
+## Explicit Parallelism
+
 <br>
 
-Operations on Shared Variables
+Tasks Communicate Via **Shared Variables**
+
+~~~~~{.haskell}
+data IVar a -- reference to `a` cell
+~~~~~
+
+- **Future** or **Promise** : Will hold the `a` in future ...
+
+<br>
+
+Operations on **Shared Variables**
 
 ~~~~~{.haskell}
 new :: Par (IVar a)                         -- create
@@ -1371,14 +1377,14 @@ put :: NFData a => IVar a -> a -> Par ()    -- write-once
 get :: IVar a -> Par a                      -- blocking read
 ~~~~~
 
-> - `NFData` = fully-evaluated data stored in shared variables
-> - No wierdness due to laziness...
+- `NFData` = fully-evaluated data stored in shared variables
+- No wierdness due to laziness...
 
 ## Explicit Parallelism
 
 <br>
 
-To Actually Execute the Action
+To Actually **Execute** the Action
 
 ~~~~~{.haskell}
 runPar :: Par a -> a 
@@ -1412,16 +1418,16 @@ main = do
 
 ## Explicit Parallelism Patterns: `spawn`
 
-> - `spawn` forks a computation in parallel... 
-
-> - returns an `IVar` on which to **wait for** result
-
 ~~~~~{.haskell}
 spawn :: NFData a => Par a -> Par (IVar a)
 spawn p = do i <- new                       -- > Create IVar 
              fork (do x <- p; put i x)      -- > Fork process to write IVar
              return i                       -- > Return IVar
 ~~~~~
+
+- `spawn` forks a computation in parallel... 
+
+- Returns an `IVar` on which to **wait for** result
 
 ## Sudoku Revisited With `spawn`
 
@@ -1472,11 +1478,12 @@ f             :: (a -> b)
 
 How would we execute a **list of tasks** in parallel?
 
+
 ~~~~~{.haskell}
 parMap :: (NFData b) => (a -> b) -> [a] -> Par [b]
 parMap f xs = do ivs <- mapM (spawn . return . f)                       -- >  
                  mapM get ivs
-~~~~
+~~~~~
 
 > 1. `spawn` each `f x` in list in parallel ...
 > 2. wait-for each variable ...
@@ -1516,4 +1523,7 @@ Run it!
 
 > - Depends on the **structure** of input 
 
-p 31 - p 33 of par-tutorial.pdf
+> - **Stay tuned**  
+
+<!-- p 31 - p 33 of par-tutorial.pdf -->
+
