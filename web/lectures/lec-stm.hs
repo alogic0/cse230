@@ -201,17 +201,17 @@ urls = [ "http://www.google.com"
 
 -- | Reading a SINGLE URL
 
-http url = do (page, time) <- timeit $ getURL url
-              printf "downloaded: %s (%d bytes, %.2fs)\n" url (B.length page) time
+timeDownload url = do (page, time) <- timeit $ getURL url
+                      printf "downloaded: %s (%d bytes, %.2fs)\n" url (B.length page) time
 
 -- | Reading ALL the URLs in sequence
 
-main6 = do (_, time) <- timeit $ mapM http urls
+main6 = do (_, time) <- timeit $ mapM timeDownload urls
            printf "TOTAL download time: %.2fs\n" time
 
 -- | Reading ALL the URLs with `async` 
 
-main7 = do (_, time) <- timeit $ (mapM (async . http) urls >>= mapM wait)
+main7 = do (_, time) <- timeit $ (mapM (async . timeDownload ) urls >>= mapM wait)
            printf "TOTAL download time: %.2fs\n" time
 
 
@@ -222,7 +222,7 @@ asyncMapM f xs = mapM (async . f) xs >>= mapM wait
 
 -- | Reading ALL URLs with `asyncMapM`
 
-main8 = do (_, time) <- timeit $ asyncMapM http urls
+main8 = do (_, time) <- timeit $ asyncMapM timeDownload urls
            printf "TOTAL download time: %.2fs\n" time
 
 
