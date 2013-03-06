@@ -1,6 +1,7 @@
 #!/usr/bin/env runhaskell
 
 import Control.Concurrent hiding (readMVar)
+import Control.Concurrent.STM
 import Control.Monad
 import System.IO
 import Data.IORef
@@ -42,8 +43,8 @@ depositIO (AIO r) n
 
 main1 :: IO ()
 main1 = do a <- newAccountIO 0
-           mapM_ (depositIO a) (replicate 50 10) 
-           showBalanceIO a   -- should be $500
+           mapM_ (depositIO a) (replicate 5 10) 
+           showBalanceIO a   -- should be $50
 
 
 -----------------------------------------------------------
@@ -53,7 +54,7 @@ main1 = do a <- newAccountIO 0
 main2 = do hSetBuffering stdout NoBuffering
            forkIO $ forever (putChar 'A') -- thread that writes 'A'
            forkIO $ forever (putChar 'B') -- thread that writes 'B'
-           threadDelay (10^5)                             -- shutdown after 1 sec
+           threadDelay (10^5)             -- shutdown after 1 sec
 
 -----------------------------------------------------------
 -- | 3. Randomly Fuzzing the Thread Scheduler -------------
@@ -78,16 +79,20 @@ main3 = do hSetBuffering stdout NoBuffering
 
 depositIO' ::  AccountIO -> Int -> IO ()
 depositIO' (AIO r) n
-  = do bal <- readIORef r
-       -- pauseRandom  -- comment out and you get right answer
-       if (bal + n < 0) 
+  = do i   <- myThreadId 
+       bal <- readIORef r
+       putStrLn $ printf "Thread id = %s read n = %d bal = %d" (show i) n bal 
+       pauseRandom           -- comment out and you get right answer
+       if ((bal + n) < 0) 
          then putStrLn $ "Sorry, cannot withdraw. Balance below " ++ show n 
-         else writeIORef r (bal + n)
+         else do putStrLn $ printf "Thread id = %s write bal = %d" (show i) (bal + n)
+                 writeIORef r (bal + n)
 
 main4 ::  IO ()
 main4 = do a <- newAccountIO 0
            mapM_ (forkIO . depositIO' a) (replicate 5 10) 
-           showBalanceIO a   -- should be $50
+           threadDelay (5 * 10^6)   -- shutdown after 1 sec
+           showBalanceIO a          -- should be $50 but isn't due to DATA RACES!
 
 -----------------------------------------------------------
 -- | 4. MVars: Vanilla ------------------------------------
@@ -191,6 +196,17 @@ wait (Async m) = readMVar m
 -- | Application: Download a bunch of URLs asynchronously,
 -- that is, without blocking on each other
 
+{- To demo the below, build with:
+   
+        $ ghc --make -threaded lec-stm.hs
+   
+   Run with:
+
+        $ ./lec-stm 6 +RTS -n4
+        $ ./lec-stm 7 +RTS -n4
+        $ ./lec-stm 8 +RTS -n4
+ -}
+
 -- | A list of URLs
 
 urls = [ "http://www.google.com"
@@ -214,7 +230,6 @@ main6 = do (_, time) <- timeit $ mapM timeDownload urls
 main7 = do (_, time) <- timeit $ (mapM (async . timeDownload ) urls >>= mapM wait)
            printf "TOTAL download time: %.2fs\n" time
 
-
 -- | Generalize into `asyncMapM`
 
 asyncMapM :: (a -> IO b) -> [a] -> IO [b]
@@ -225,7 +240,6 @@ asyncMapM f xs = mapM (async . f) xs >>= mapM wait
 main8 = do (_, time) <- timeit $ asyncMapM timeDownload urls
            printf "TOTAL download time: %.2fs\n" time
 
-
 -----------------------------------------------------------
 -- | 7. Lock/Synchronize Via MVars ------------------------
 -----------------------------------------------------------
@@ -233,31 +247,149 @@ main8 = do (_, time) <- timeit $ asyncMapM timeDownload urls
 -- `synchronize` is NOT a keyword, JUST a function...
 
 synchronize :: MVar b -> IO a -> IO a
-synchronize lock action 
-  = do x <- takeMVar lock
-       z <- action
-       putMVar lock x 
-       return z
-     
--- TODO: deposit with GLOBAL BANK lock
+synchronize lock action = do x <- takeMVar lock
+                             z <- action
+                             putMVar lock x 
+                             return z
 
 
--- TODO: deposit with LOCAL ACCOUNT lock
+-- A `synchronize` deposit that prevents races...
+
+main9 :: IO ()
+main9 = do 
+  l <- newMVar 0                                            -- global lock, with dummy unit value
+  a <- newAccountIO 0                                       -- create the account
+  asyncMapM (synchronize l . depositIO' a) (replicate 5 10) -- dump money with synchronize 
+  showBalanceIO a                                           -- will be $50
+
+-- What happens if you comment out the `synchronize l` ?
+
+-- | Btw, why are we using asyncMapM  not something like? Try to use this
+-- instead of asyncMapM above and see if you can figure it out. 
+-- Hint: after forking, parent does not wait for children to finish...
+
+forkMapM :: (a -> IO ()) -> [a] -> IO ()
+forkMapM f xs = mapM_ (forkIO . f) xs
 
 -----------------------------------------------------------
--- | 8. Transfer ------------------------------------------
+-- | 8. Zero Concurrency Above, because GLOBAL Lock -------
 -----------------------------------------------------------
 
--- TODO: attempt with global lock
--- TODO: attempt with local lock
--- TODO: attempt ...
--- screwed 
+-- AccountMV has a local lock per account, lets simulate with explicit lock.
+
+data AccountL = AL { money :: IORef Int 
+                   , lock  :: MVar ()   
+                   }
+
+newAccountL n = liftM2 AL (newIORef n) (newMVar ())
+
+showBalanceL ::  AccountL -> IO ()
+showBalanceL (AL r _) 
+  = do bal <- readIORef r
+       putStrLn $ "Current Balance: " ++ show bal
+
+
+depositL ::  AccountL -> Int -> IO ()
+depositL (AL r _) n
+  = do i   <- myThreadId 
+       bal <- readIORef r
+       putStrLn $ printf "Thread id = %s read n = %d bal = %d" (show i) n bal 
+       pauseRandom           -- comment out and you get right answer
+       if ((bal + n) < 0) 
+         then putStrLn $ "Sorry, cannot withdraw. Balance below " ++ show n 
+         else do putStrLn $ printf "Thread id = %s write bal = %d" (show i) (bal + n)
+                 writeIORef r (bal + n)
+
+-- Make sure we use the *same* lock...
+
+main10 :: IO ()
+main10 = do 
+  a <- newAccountL 0                                              -- create the account
+  asyncMapM (synchronize (lock a) . depositL a) (replicate 5 10)  -- dump money with synchronize 
+  showBalanceL a                                                  -- will be $50
+
+--------------------------------------------------------------------
+-- | Transferring between accounts ---------------------------------
+--------------------------------------------------------------------
+
+transferL         ::  AccountL -> AccountL -> Int -> IO ()
+transferL a1 a2 n = do depositL a1 $ 0 - n                  -- withdrawn n from a1
+                       depositL a2 $ n                      -- deposit   n into a2
+
+-- | `syncTransfer` will prevent races ... but cause deadlocks 
+
+syncTransfer         ::  AccountL -> AccountL -> Int -> IO ()
+syncTransfer a1 a2 n = 
+  synchronize (lock a1) $ 
+    synchronize (lock a2) $ 
+      transferL a1 a2 n
+
+-- | Can use a GLOBAL lock as in `main9` but zero concurrency ... bit pointless.
 
 -----------------------------------------------------------
 -- | 9. STM -----------------------------------------------
 -----------------------------------------------------------
 
--- TODO: deposit with STM
+{-  New type of trans-action
+ 
+        data STM a                          -- transactions that return an `a`
+
+    Executed via a special function call
+
+        atomically :: STM a -> IO a
+
+    Only shared state is a special kind of variable
+
+        data TVar a                         -- transactional variables storing an `a`
+
+    With the operations,
+
+        newTVar :: a -> STM (TVar a)        -- create a TVar
+
+        readTVar :: TVar a -> STM a         -- read a TVar
+
+        writeTVar :: TVar a -> a -> STM ()  -- write a TVar
+
+    Just like operations on IORef but with STM actions instead
+
+ -} 
+
+newtype AccountT = AT (TVar Int) 
+
+newAccountT ::  Int -> STM AccountT
+newAccountT n = liftM AT (newTVar n)
+
+showBalanceT ::  AccountT -> IO ()
+showBalanceT (AT r) 
+  = do bal <- atomically $ readTVar r
+       putStrLn $ "Current Balance: " ++ show bal
+
+depositT ::  AccountT -> Int -> STM ()
+depositT (AT r) n
+  = do bal <- readTVar r
+       if (bal + n < 0) 
+         then retry                 -- special "abort" action 
+         else writeTVar r (bal + n)
+
+main11 :: IO ()
+main11 = do a <- atomically $ newAccountT 0
+            asyncMapM (atomically . depositT a) (replicate 5 10) 
+            showBalanceT a   -- should be $50
+
+
+-----------------------------------------------------------------------
+-- | Transactions Compose! --------------------------------------------
+-----------------------------------------------------------------------
+
+transferT         ::  AccountT -> AccountT -> Int -> STM ()
+transferT a1 a2 n = do depositT a1 $ 0 - n                  -- withdrawn n from a1
+                       depositT a2 $ n                      -- deposit   n into a2
+
+
+-- | No need for ANY synchronization, just say the word!
+
+atomicTransferT a1 a2 n = atomically $ transferT a1 a2 n
+
 
           
 -----------------------------------------------------------
@@ -266,16 +398,19 @@ synchronize lock action
 
 -- main = putStrLn "Hello world"
 
-main       = getArgs >>= ( go . head )
+main        = getArgs >>= ( go . head )
   where 
-    go "1" = main1
-    go "2" = main2
-    go "3" = main3
-    go "4" = main4
-    go "5" = main5
-    go "6" = main6
-    go "7" = main7
-    go "8" = main8
+    go "1"  = main1
+    go "2"  = main2
+    go "3"  = main3
+    go "4"  = main4
+    go "5"  = main5
+    go "6"  = main6
+    go "7"  = main7
+    go "8"  = main8
+    go "9"  = main9
+    go "10" = main10
+    go "11" = main11
     go cmd = putStrLn $ "Say what? " ++ cmd
 
 
