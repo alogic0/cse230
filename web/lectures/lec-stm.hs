@@ -12,6 +12,7 @@ import Network.HTTP
 import Network.Browser
 import Network.URI
 import Data.Time
+import Text.Printf
 
 -----------------------------------------------------------
 -- | 1. Mutable State Via IORef ---------------------------
@@ -187,15 +188,42 @@ async action = do m <- newEmptyMVar
 wait :: Async a -> IO a
 wait (Async m) = readMVar m
 
--- Application: Download a bunch of URLs asynchronously, i.e. without blocking on each other
+-- | Application: Download a bunch of URLs asynchronously,
+-- that is, without blocking on each other
+
+-- | A list of URLs
 
 urls = [ "http://www.google.com"
        , "http://www.buzzfeed.com"
        , "http://www.reddit.com/r/haskell"
-       , "http://www.twitter.com"
        , "http://www.nytimes.com"
        ]
 
+-- | Reading a SINGLE URL
+
+http url = do (page, time) <- timeit $ getURL url
+              printf "downloaded: %s (%d bytes, %.2fs)\n" url (B.length page) time
+
+-- | Reading ALL the URLs in sequence
+
+main6 = do (_, time) <- timeit $ mapM http urls
+           printf "TOTAL download time: %.2fs\n" time
+
+-- | Reading ALL the URLs with `async` 
+
+main7 = do (_, time) <- timeit $ (mapM (async . http) urls >>= mapM wait)
+           printf "TOTAL download time: %.2fs\n" time
+
+
+-- | Generalize into `asyncMapM`
+
+asyncMapM :: (a -> IO b) -> [a] -> IO [b]
+asyncMapM f xs = mapM (async . f) xs >>= mapM wait
+
+-- | Reading ALL URLs with `asyncMapM`
+
+main8 = do (_, time) <- timeit $ asyncMapM http urls
+           printf "TOTAL download time: %.2fs\n" time
 
 
 -----------------------------------------------------------
@@ -245,6 +273,9 @@ main       = getArgs >>= ( go . head )
     go "3" = main3
     go "4" = main4
     go "5" = main5
+    go "6" = main6
+    go "7" = main7
+    go "8" = main8
     go cmd = putStrLn $ "Say what? " ++ cmd
 
 
