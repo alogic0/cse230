@@ -18,7 +18,7 @@ title: Lectures
   *2/25*     Monad Transformers                                 [html][lec11] [lhs][lhs11]
   *2/27*     Data Parallelism                                   [html][lec12] [code][cod12]
    *3/4*     contd.
-             Software Transactional Memory                      
+   *3/6*     Concurrency                                        [pdf][lec13] [cod][lec13]
              Lambda Calculus                                    
              Hindley-Milner Type Inference                      
  
@@ -58,6 +58,11 @@ title: Lectures
 
 [lec12]: slides/lec-parallel.markdown.slides.html
 [cod12]: https://github.com/ranjitjhala/par-tutorial
+
+
+[lec13]: static/lec-stm-2x2.pdf
+[cod13]: static/lec-stm.hs
+
 
 
 
