@@ -18,10 +18,10 @@ title: Lectures
   *2/25*     Monad Transformers                                 [html][lec11] [lhs][lhs11]
   *2/27*     Data Parallelism                                   [html][lec12] [code][cod12]
    *3/4*     contd.
-   *3/6*     Concurrency                                        [pdf][lec13] [code][cod13]
-  *3/11*     contd.
-  *3/13*     Lambda Calculus & Type Inference                   [html][lec14] [code][cod14]
-
+   *3/6*     Concurrency                                        [pdf][lec13] [cod][lec13]
+             Lambda Calculus                                    
+             Hindley-Milner Type Inference                      
+ 
 ----------------------------------------------------------------------------------
 
 [lec1]: static/lec-intro-2x2.pdf
@@ -59,12 +59,9 @@ title: Lectures
 [lec12]: slides/lec-parallel.markdown.slides.html
 [cod12]: https://github.com/ranjitjhala/par-tutorial
 
+
 [lec13]: static/lec-stm-2x2.pdf
 [cod13]: static/lec-stm.hs
-
-[lec14]: lectures/lec-inference.html
-[cod14]: lectures/lec-inference.lhs
-
 
 
 
