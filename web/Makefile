@@ -1,8 +1,8 @@
 
 SITEUSER=rjhala@csefast.ucsd.edu
-SITEPATH=/net/cs/htdocs/classes/wi13/cse230-a/
+SITEPATH=/net/cs/htdocs/classes/wi14/cse230-a/
 
-all:
+all: hakyll
 	./hakyll rebuild
 
 hakyll:

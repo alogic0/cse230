@@ -21,10 +21,10 @@ main = hakyll $ do
         route   idRoute
         compile compressCssCompiler
 
-    match "templates/*" $ compile templateCompiler
-    match "lectures/*"  $ myMakeHTML
-    match "homeworks/*" $ myMakeHTML
-    match (list tops)   $ myMakeHTML
+    match "templates/*"   $ compile templateCompiler
+    match "lectures/*"    $ myMakeHTML
+    match "homeworks/*"   $ myMakeHTML
+    match (fromList tops) $ myMakeHTML
 
 tops = [ "index.markdown"
        , "grades.markdown"
@@ -35,6 +35,6 @@ tops = [ "index.markdown"
 myMakeHTML 
   = do route   $ setExtension "html"
        route   $ setExtension "lhs"
-       compile $ pageCompiler
-         >>> applyTemplateCompiler "templates/default.html"
-         >>> relativizeUrlsCompiler
+       compile $ pandocCompiler
+         >>= loadAndApplyTemplate "templates/default.html" defaultContext
+         >>= relativizeUrls

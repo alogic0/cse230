@@ -12,14 +12,15 @@ title: Home
 
 ## Staff
 
-*Instructor:* Ranjit Jhala `(jhala+230@cs.ucsd.edu)`
-*TA:* Niki Vazou `(nvazou+230@cs.ucsd.edu)`
++ *Instructor:* Ranjit Jhala `(jhala+230@cs.ucsd.edu)`
++ *TA:* Niki Vazou `(nvazou+230@cs.ucsd.edu)`
 
 ## Co-ordinates 
 
-*Lectures:* M-W 6:30 to 7:50pm in **WLH 2111**
++ *Lectures:* Tu-Th 12:30 to 1:50pm  
++ *Location:* WLH 2204
 
-*Office Hours* :
+## Office Hours
 
 - Ranjit  : MW 5:00-6:00p
 
