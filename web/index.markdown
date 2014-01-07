@@ -20,6 +20,13 @@ marginwidth="0">Loading...</iframe>
 + *Lectures:* Tu-Th 12:30 to 1:50pm  
 + *Location:* WLH 2204
 
+## Clickers etc.
+
++ [Groups](static/groups.csv)
++ [Seating Chart](static/wlh2204.pdf)
++ [Info](http://acms.ucsd.edu/faculty/clickers/)
+
+
 ## Office Hours
 
 - Ranjit  : MW 5:00-6:00p
