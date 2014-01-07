@@ -5,7 +5,7 @@ title: Lectures
     
 **Date**     **Topic**                                          **Notes**
 --------     ----------------------------------------------     --------------
-   *1/7*     Introduction                                       [pdf][lec1] [hs][lec1hs]
+   *1/7*     Introduction                                       [pdf][lec1] [hs][hs1] [lhs][lhs1]
 
 <!-- 
   *1/9*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
@@ -28,7 +28,8 @@ title: Lectures
 ----------------------------------------------------------------------------------
 
 [lec1]: static/lec-intro-2x2.pdf
-[lec1hs]: static/lec-intro.hs
+[hs1]:  static/lec-intro.hs
+[lhs1]: static/lec-intro.lhs
 
 <!--
 [lec2]: lectures/lec-higher-order-1.html
