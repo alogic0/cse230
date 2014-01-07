@@ -6,7 +6,8 @@ title: Grading
   Will occur regularly, and will be **group** work. 
   They will typically be pencil-and-paper exercises 
   that must be completed without the use of a computer. 
-  **You need to acquire a clicker** for this.
+  **You need to acquire a** [clicker](http://acms.ucsd.edu/faculty/clickers/)
+  clicker for this. 
 
 - *Homework Assignments (60%)* : 
   About 5 mainly programming, done in groups of 2-3.
