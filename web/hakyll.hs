@@ -34,7 +34,7 @@ tops = [ "index.markdown"
 
 myMakeHTML 
   = do route   $ setExtension "html"
-       route   $ setExtension "lhs"
+       -- route   $ setExtension "lhs"
        compile $ pandocCompiler
          >>= loadAndApplyTemplate "templates/default.html" defaultContext
          >>= relativizeUrls

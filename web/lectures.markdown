@@ -5,8 +5,10 @@ title: Lectures
     
 **Date**     **Topic**                                          **Notes**
 --------     ----------------------------------------------     --------------
-   *1/7*     Introduction                                       [pdf][lec1] 
-   *1/9*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
+   *1/7*     Introduction                                       [pdf][lec1] [hs][lec1hs]
+
+<!-- 
+  *1/9*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
   *1/14*     Polymorphism                                       [html][lec3] [slides][lec3s] [lhs][lhs3]
   *1/15*     Typeclasses                                        [html][lec4] [lhs][lhs4]
   *1/23*     Functional Animation                               [html][lec5] [lhs][lhs5]
@@ -21,12 +23,14 @@ title: Lectures
    *3/6*     Concurrency                                        [pdf][lec13] [cod][lec13]
              Lambda Calculus                                    
              Hindley-Milner Type Inference                      
- 
+ -->
+
 ----------------------------------------------------------------------------------
 
 [lec1]: static/lec-intro-2x2.pdf
-[hs]  : static/lec-intro.hs
+[lec1hs]: static/lec-intro.hs
 
+<!--
 [lec2]: lectures/lec-higher-order-1.html
 [lhs2]: lectures/lec-higher-order-1.lhs
 [lec2s]: slides/lec-higher-order.lhs.slides.html
@@ -59,13 +63,10 @@ title: Lectures
 [lec12]: slides/lec-parallel.markdown.slides.html
 [cod12]: https://github.com/ranjitjhala/par-tutorial
 
-
 [lec13]: static/lec-stm-2x2.pdf
 [cod13]: static/lec-stm.hs
 
-
-
-
+-->
 
 
 

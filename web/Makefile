@@ -1,5 +1,5 @@
 
-SITEUSER=rjhala@csefast.ucsd.edu
+SITEUSER=rjhala@login.eng.ucsd.edu
 SITEPATH=/net/cs/htdocs/classes/wi14/cse230-a/
 
 all: hakyll

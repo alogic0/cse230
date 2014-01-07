@@ -2,13 +2,13 @@
 title: Home 
 ---
 
-<!--
 
 ## Signup "Sheet"
 
-<iframe src="https://docs.google.com/a/eng.ucsd.edu/spreadsheet/embeddedform?formkey=dFJhaGJJZW1QUlN2NTVzbS1HaEYyQWc6MQ" width="760" height="629" frameborder="0" marginheight="0" marginwidth="0">Loading...</iframe>
-
--->
+<iframe
+src="https://docs.google.com/forms/d/11sd-G93Zp0cv72TV5C8KGuPgxENYbR3tchLTsAYNH90/viewform?embedded=true"
+width="760" height="500" frameborder="0" marginheight="0"
+marginwidth="0">Loading...</iframe>
 
 ## Staff
 
@@ -39,13 +39,11 @@ as a launching pad to study expressive type systems, logics and
 analyses that can make precise predictions about run-time behavior
 at compile time. For more details see the [lecture](lectures.html) plan.
 
-
 ## Prerequisites
 
 The class is mostly self contained. However, it will be *helpful* to have
 some knowledge of basic discrete math, and it will be *essential* 
 that you enjoy programming and have a desire to learn the material.
-
 
 ##Integrity of Scholarship
 
