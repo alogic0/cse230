@@ -1,10 +1,27 @@
 #!/usr/bin/env runhaskell
 
+
+zero = 0
+
+x = 12
+
+
 pos :: Integer -> Bool 
 pos x = x > 0
 
+
+
+
+pat3 :: Int -> Int -> Int -> Int
+pat3 x y z = x * (y + z )
+
+zog = pat3 2 10
+
+
 pat :: (Int, Int, Int) -> Int
 pat (x, y, z) = x * (y + z )
+
+-- | HEREHEREHEREHEREHERE
 
 -- | A recursive function
 

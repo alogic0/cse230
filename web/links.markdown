@@ -1,3 +1,4 @@
+-
 ---
 title: Links 
 ---
@@ -11,6 +12,8 @@ for more, start at [haskell.org](http://haskell.org).
 
 - [Haskell Cheat Sheet](http://cheatsheet.codeslower.com/CheatSheet.pdf)
 
+- [What I Wish I Knew When Learning Haskell](http://dev.stephendiehl.com/hask/)
+-
 ## Books 
 
 - [Haskell Wiki Book](http://en.wikibooks.org/wiki/Haskell) 
