@@ -2,14 +2,12 @@
 title: Home 
 ---
 
-<!--
 ## Signup "Sheet"
 
 <iframe
 src="https://docs.google.com/forms/d/11sd-G93Zp0cv72TV5C8KGuPgxENYbR3tchLTsAYNH90/viewform?embedded=true"
 width="760" height="500" frameborder="0" marginheight="0"
 marginwidth="0">Loading...</iframe>
--->
 
 ## Staff
 
