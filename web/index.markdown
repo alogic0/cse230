@@ -22,9 +22,10 @@ marginwidth="0">Loading...</iframe>
 
 ## Clickers etc.
 
-+ [Groups](static/groups.csv)
++ [Groups](static/groups.txt)
 + [Seating Chart](static/wlh2204.pdf)
 + [Info](http://acms.ucsd.edu/faculty/clickers/)
++ [Phone-App](http://www1.iclicker.com/mobile-polling-iclicker-go)
 
 
 ## Office Hours
