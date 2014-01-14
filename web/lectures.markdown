@@ -1,14 +1,14 @@
 ---
 title: Lectures
 ---
-     
-    
+
 **Date**     **Topic**                                          **Notes**
 --------     ----------------------------------------------     --------------
    *1/7*     Introduction                                       [pdf][lec1] [hs][hs1] [lhs][lhs1]
+   *1/9*     (contd.)
+  *1/14*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
 
 <!-- 
-  *1/9*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
   *1/14*     Polymorphism                                       [html][lec3] [slides][lec3s] [lhs][lhs3]
   *1/15*     Typeclasses                                        [html][lec4] [lhs][lhs4]
   *1/23*     Functional Animation                               [html][lec5] [lhs][lhs5]
@@ -31,11 +31,11 @@ title: Lectures
 [hs1]:  static/lec-intro.hs
 [lhs1]: static/lec-intro.lhs
 
-<!--
 [lec2]: lectures/lec-higher-order-1.html
 [lhs2]: lectures/lec-higher-order-1.lhs
 [lec2s]: slides/lec-higher-order.lhs.slides.html
 
+<!--
 [lec3]: lectures/lec-higher-order-2.html
 [lhs3]: lectures/lec-higher-order-2.lhs
 [lec3s]: slides/lec-polymorphism.lhs.slides.html
