@@ -6,18 +6,78 @@ Swizzling One Character
 First make a lookup table or *association list* of characters; each
 element is a list is a pair of the char and its swizzled version.
 
+That is, we want a list that looks like:
+
+~~~~~{.haskell}
+  [('a', 't')
+  ,('b', 'h')
+  ,('c', 'e')
+  ,('d', 'q')
+  ,('e', 'u')
+  , ...
+  ]
+~~~~~
+
+
+
+
+
+
+How do we create it?
+
+> makePairs chars txChars = undefined
+
+
+
 > code :: [(Char, Char)]
-> code = zip ['a' .. 'z'] "thequickbrownfxjmpsdvlazyg"
-	  
-> swizzleChar :: Char -> Char
-> swizzleChar c = lookup c code of
->   Just c' -> c'
->   Nothing -> c
+> code = makePairs ['a' .. 'z'] "thequickbrownfxjmpsdvlazyg"
+	 
+
+Now, we can use the `code` to translate a **single** character.
 
 
+So that, 
 
-Can you think of a simple way to check that each (lower case) 
-character is infact mapped to a distinct character, ie that there
+~~~~~{.haskell}
+swizzleChar 'a' code == 't'     -- 'a' encoded as 't'
+swizzleChar 'b' code == 'h'     -- 'b' encoded as 'h'
+swizzleChar 'λ' code == 'λ'     -- non-lower case encoded as itself.
+~~~~~
+
+> swizzleChar c code = undefined
+
+Representing Failure 
+--------------------
+
+It is common for functions to be *partial* by 
+
++ failing 
++ being undefined 
+
+on some inputs. 
+
+Instead of throwing an **exception** the more Haskelly solution is:
+
+~~~~~{.haskell}
+data Maybe a = Nothing    -- failure, no value  
+             | Just a     -- success, with a value
+~~~~~
+
+Lets rewrite the above recursive `swizzleChar` to use `Maybe`
+
+> findInList x kvs = undefined
+
+**QUIZ** What is the type of `findInList` ?
+
+Now lets rewrite `swizzleChar` with `findInList`
+
+> swizzleChar' c code = findInList c code 
+
+**QUIZ**: Will the above work?
+
+
+**QUIZ**: Can you think of a simple way to check that each (lower case) 
+character is in fact mapped to a distinct character, ie that there
 are no collisions?
 
 Swizzling One Line
