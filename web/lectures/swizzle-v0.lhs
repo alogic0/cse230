@@ -1,4 +1,4 @@
-> import System.Environment
+> import System
 
 Swizzling One Character
 -----------------------
@@ -10,7 +10,10 @@ element is a list is a pair of the char and its swizzled version.
 > code = zip ['a' .. 'z'] "thequickbrownfxjmpsdvlazyg"
 	  
 > swizzleChar :: Char -> Char
-> swizzleChar c = fromMaybe c (lookup c code)
+> swizzleChar c = lookup c code of
+>   Just c' -> c'
+>   Nothing -> c
+
 
 
 Can you think of a simple way to check that each (lower case) 
@@ -23,7 +26,8 @@ Swizzling One Line
 To swizzle one line, we will swizzle each character on the line.
 
 > swizzleLine :: String -> String
-> swizzleLine = map swizzleChar
+> swizzleLine []     = []
+> swizzleLine (c:cs) = (swizzleChar c) : (swizzleLine cs)
 
 
 Swizzling Many Lines
@@ -33,15 +37,19 @@ To swizzle a file, we will first reverse the lines in the file and then
 swizzle each line of the file. 
 
 > swizzleContent :: String -> String
-> swizzleContent fileString = fileString |> lines 
->                                        |> reverse 
->                                        |> map swizzleLine 
->                                        |> unlines
-
+> swizzleContent fileString = 
+>   let fileLines        = lines fileString
+>       fileLinesRev     = reverse fileLines
+>       fileLinesRevSwiz = swizzleLines fileLinesRev
+>       fileStringSwiz   = unlines fileLinesRevSwiz
+>   in fileStringSwiz
 
 where the auxiliary function `swizzleLines` 
 simply swizzles the content of each line.
 
+> swizzleLines :: [String] -> [String]
+> swizzleLines []     = []
+> swizzleLines (l:ls) = (swizzleLine l) : (swizzleLines ls)
 
 Doing the IO
 ------------
@@ -59,7 +67,9 @@ file.
 Hmm, it would be nice to be able to swizzle many files at one shot.
 
 > swizzleFiles :: [FilePath] -> IO ()
-> swizzleFiles fs = sequence_ (map swizzleFile fs) 
+> swizzleFiles []     = return ()
+> swizzleFiles (f:fs) = do swizzleFile f 
+>                          swizzleFiles fs
 
 Finally, we put it all together.
 
