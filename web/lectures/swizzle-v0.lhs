@@ -25,7 +25,10 @@ That is, we want a list that looks like:
 
 How do we create it?
 
-> makePairs chars txChars = undefined
+> makePairs :: [a] -> [b] -> [(a, b)]
+> makePairs [] []           = [] 
+> makePairs (c:cs) (cc:ccs) = (c,cc) : makePairs cs ccs 
+
 
 
 
@@ -39,12 +42,22 @@ Now, we can use the `code` to translate a **single** character.
 So that, 
 
 ~~~~~{.haskell}
-swizzleChar 'a' code == 't'     -- 'a' encoded as 't'
-swizzleChar 'b' code == 'h'     -- 'b' encoded as 'h'
-swizzleChar 'λ' code == 'λ'     -- non-lower case encoded as itself.
+swizzleChar  'a' code == 't'     -- 'a' encoded as 't'
+swizzleChar  'b' code == 'h'     -- 'b' encoded as 'h'
+swizzleChar  'λ' code == 'λ'     -- non-lower case encoded as itself.
 ~~~~~
 
-> swizzleChar c code = undefined
+> swizzleChar c code = fromMaybe c (lookup c code)
+
+> foo = bar 
+> -- data Maybe a = Nothing | Just a
+
+
+
+
+
+
+
 
 Representing Failure 
 --------------------

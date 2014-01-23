@@ -1,5 +1,5 @@
 ---
-title: Homework #1, Due Friday, 1/18/13
+title: Homework #1, Due Friday, 1/31/14
 ---
 
 Part 0: All About You
@@ -18,10 +18,10 @@ Preliminaries
 
 Before starting this assignment:
 
-1. Read chapters 1 -- 3 of The Haskell School of Expression.
-2. Download and install the [Haskell Platform](http://www.haskell.org/platform/).
-3. Download the [SOE code bundle](/static/SOE-CSE230-wi13.tgz).
-4. Verify that it works by changing into the `SOE/src` directory and
+* Download and install the [Haskell Platform](http://www.haskell.org/platform/).
+* Download the [SOE code bundle](/static/SOE-CSE230.zip).
+
+* Verify that it works by changing into the `SOE/src` directory and
    running `ghci Draw.lhs`, then typing `main0` at the prompt:
  
 ~~~
@@ -59,7 +59,7 @@ You will write all of your code in the `hw1.lhs` file, in the spaces
 indicated. Do not alter the type annotations --- your code must
 typecheck with these types to be accepted.
 
-The following are the definitions of shapes from Chapter 2 of SOE:
+The following are the definitions of shapes:
 
 > data Shape = Rectangle Side Side
 >            | Ellipse Radius Radius
@@ -155,69 +155,110 @@ Also, the organization of SOE has changed a bit, so that now you use
 > myFractal :: IO ()
 > myFractal = error "Define me!"
 
-Part 3: Transforming XML Documents
-----------------------------------
+Part 3: Recursion Etc.
+----------------------
 
-First, a warmup:
+First, a warmup. Fill in the implementations for the following functions.
 
-1. Read chapters 5 and 7 of SOE.
+(Your `maxList` and `minList` functions may assume that the lists
+they are passed contain at least one element.)
 
-2. Do problems 5.3, 5.5, 5.6, 7.1, and 7.2 from SOE, and turn them
-   is as part of the source code you create below.
+Write a *non-recursive* function to compute the length of a list
 
-   Your `maxList` and `minList` functions may assume that the lists
-   they are passed contain at least one element.
+> lengthNonRecursive :: [a] -> Int
+> lengthNonRecursive = error "Define me!"
 
-> lengthNonRecrusive :: [a] -> Int
-> lengthNonRecrusive = error "Define me!"
+`doubleEach [1,20,300,4000]` should return `[2,40,600,8000]`
 
 > doubleEach :: [Int] -> [Int]
 > doubleEach = error "Define me!"
 
+Now write a *non-recursive* version of the above.
+
 > doubleEachNonRecursive :: [Int] -> [Int]
 > doubleEachNonRecursive = error "Define me!"
+
+`pairAndOne [1,20,300]` should return `[(1,2), (20,21), (300,301)]`
 
 > pairAndOne :: [Int] -> [(Int, Int)]
 > pairAndOne = error "Define me!"
 
+
+Now write a *non-recursive* version of the above.
+
 > pairAndOneNonRecursive :: [Int] -> [(Int, Int)]
 > pairAndOneNonRecursive = error "Define me!"
+
+`addEachPair [(1,2), (20,21), (300,301)]` should return `[3,41,601]`
 
 > addEachPair :: [(Int, Int)] -> [Int]
 > addEachPair = error "Define me!" 
 
+Now write a *non-recursive* version of the above.
+
 > addEachPairNonRecursive :: [(Int, Int)] -> [Int]
 > addEachPairNonRecursive = error "Define me!" 
+
+`minList` should return the *smallest* value in the list. You may assume the
+input list is *non-empty*.
 
 > minList :: [Int] -> Int
 > minList = error "Define me!"
 
+Now write a *non-recursive* version of the above.
+
 > minListNonRecursive :: [Int] -> Int
 > minListNonRecursive = error "Define me!"
+
+`maxList` should return the *largest* value in the list. You may assume the
+input list is *non-empty*.
 
 > maxList :: [Int] -> Int
 > maxList = error "Define me!"
 
+Now write a *non-recursive* version of the above.
+
 > maxListNonRecursive :: [Int] -> Int
 > maxListNonRecursive = error "Define me!"
+
+Now, a few functions for this `Tree` type.
 
 > data Tree a = Leaf a | Branch (Tree a) (Tree a)
 >               deriving (Show, Eq)
 
+`fringe t` should return a list of all the values occurring as a `Leaf`.
+So: `fringe (Branch (Leaf 1) (Leaf 2))` should return `[1,2]`
+
 > fringe :: Tree a -> [a]
 > fringe = error "Define me!"
+
+`treeSize` should return the number of leaves in the tree. 
+So: `treeSize (Branch (Leaf 1) (Leaf 2))` should return `2`.
 
 > treeSize :: Tree a -> Int
 > treeSize = error "Define me!"
 
+`treeSize` should return the height of the tree.
+So: `height (Branch (Leaf 1) (Leaf 2))` should return `1`.
+
 > treeHeight :: Tree a -> Int
 > treeHeight = error "Define me!"
+
+Now, a tree where the values live at the nodes not the leaf.
 
 > data InternalTree a = ILeaf | IBranch a (InternalTree a) (InternalTree a)
 >                       deriving (Show, Eq)
 
+`takeTree n t` should cut off the tree at depth `n`.
+So `takeTree 1 (IBranch 1 (IBranch 2 ILeaf ILeaf) (IBranch 3 ILeaf ILeaf)))`
+should return `IBranch 1 ILeaf ILeaf`.
+
 > takeTree :: Int -> InternalTree a -> InternalTree a
 > takeTree = error "Define me!"
+
+`takeTreeWhile p t` should cut of the tree at the nodes that don't satisfy `p`.
+So: `takeTreeWhile (< 3) (IBranch 1 (IBranch 2 ILeaf ILeaf) (IBranch 3 ILeaf ILeaf)))`
+should return `(IBranch 1 (IBranch 2 ILeaf ILeaf) ILeaf)`.
 
 > takeTreeWhile :: (a -> Bool) -> InternalTree a -> InternalTree a
 > takeTreeWhile = error "Define me!"
@@ -226,6 +267,9 @@ Write the function map in terms of foldr:
 
 > myMap :: (a -> b) -> [a] -> [b]
 > myMap = error "Define me!"
+
+Part 4: Transforming XML Documents
+----------------------------------
 
 The rest of this assignment involves transforming XML documents.
 To keep things simple, we will not deal with the full generality of XML,
