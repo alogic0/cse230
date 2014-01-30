@@ -8,9 +8,9 @@ title: Lectures
    *1/9*     (contd.)
   *1/14*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
   *1/16*     Polymorphism                                       [html][lec3] [slides][lec3s] [lhs][lhs3]
+  *1/28*     Typeclasses                                        [html][lec4] [lhs][lhs4]
 
 <!--   
-  *1/15*     Typeclasses                                        [html][lec4] [lhs][lhs4]
   *1/23*     Functional Animation                               [html][lec5] [lhs][lhs5]
   *1/28*     Functional Reactive Programming                    [html][lec6] [lhs][lhs6]
   *1/30*     Monads                                             [html][lec7] [lhs][lhs7]
@@ -39,10 +39,10 @@ title: Lectures
 [lhs3]: lectures/lec-higher-order-2.lhs
 [lec3s]: slides/lec-polymorphism.lhs.slides.html
 
-<!--
 [lec4]: lectures/lec-typeclasses.html
 [lhs4]: lectures/lec-typeclasses.lhs
 
+<!--
 [lec5]: lectures/lec-animation.html
 [lhs5]: lectures/lec-animation.lhs
 

@@ -266,17 +266,6 @@ lookup tables etc.)
 > totalOfTree (Bind _ val l r) = totalOfTree l + val + totalOfTree r 
 
 
-  foo :: (k -> v -> BASE -> BASE -> BASE) -> BASE -> BST k v -> BASE
-
-> foo op base Empty          = base
-> foo op base (Bind k v l r) = op k v (foo op base l) (foo op base r)
-
-
-> keysOfTree'  = foo (\k _ lr rr -> lr ++ [k] ++ rr) []
-> valsOfTree'  = foo (\_ v lr rr -> lr ++ [v] ++ rr) []
-> totalOfTree' = foo (\_ v lr rr -> lr + v + rr)     0 
-
-
 We will call this type `BST` to abbreviate [Binary Search Tree][2] which
 are trees where keys are ordered such that at each node, the keys appearing
 in the *left* and *right* subtrees are respectively *smaller* and *larger* 
@@ -342,12 +331,26 @@ Nothing
 ~~~~~
 
 Similarly, it makes sense to implement a `toList` which will convert the
-map into an association list. First, lets write a generic `foldBST`
+map into an association list. 
 
-> foldBST f b Empty          = b 
-> foldBST f b (Bind k v l r) = f k v (foldBST f b l) (foldBST f b r)
+Exercise
+--------
 
-after which `toList` is simply (but rather inefficiently!)
+Lets quickly generalize the above with a generic `foldBST` function.
+
+> foldBST = undefined
+
+Exercise
+--------
+
+Can you reimplement the following functions with `foldBST`
+
+> keysOfTree'  = foldBST undefined undefined 
+> valsOfTree'  = foldBST undefined undefined 
+> totalOfTree' = foldBST undefined undefined 
+
+
+After which `toList` is simply (but rather inefficiently!)
 
 > toList =  foldBST (\k v l r -> l ++ [(k, v)] ++ r) []
 
@@ -358,6 +361,7 @@ ghci> toList t
 
 Exercise 
 --------
+
 Why is the output sorted (by key) ?
 
 
@@ -539,9 +543,11 @@ class Eq a  where
     x /= y         = not (x == y)
 ~~~~~
 
-Thus, to define our own equality (and disequality) procedures we write
+Thus, to define our own equality (and disequality) procedures we *remove* the
+`deriving Eq` and put in our own instance like so:
 
-
+> -- instance Eq (BST k v) where
+> --   t1 == t2 = undefined
 
 The above instance declaration states that if `k` and `v` are instances of
 `Eq`, that is can be compared for equality, then `BST k v` can be compared
@@ -552,7 +558,6 @@ we get
 ghci> t == ofList (toList t)
 True
 ~~~~~
-
 
 In general, when instantiating a typeclass, Haskell will check that we have 
 provided a *minimal implementation* containing enough functions from which
