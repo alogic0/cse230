@@ -2,13 +2,15 @@
 title: Home 
 ---
 
-
+<!--
 ## Signup "Sheet"
 
 <iframe
 src="https://docs.google.com/forms/d/11sd-G93Zp0cv72TV5C8KGuPgxENYbR3tchLTsAYNH90/viewform?embedded=true"
 width="760" height="500" frameborder="0" marginheight="0"
 marginwidth="0">Loading...</iframe>
+
+-->
 
 ## Staff
 
@@ -20,9 +22,22 @@ marginwidth="0">Loading...</iframe>
 + *Lectures:* Tu-Th 12:30 to 1:50pm  
 + *Location:* WLH 2204
 
+## Clickers etc.
+
++ [Info](http://acms.ucsd.edu/faculty/clickers/)
+
+<!-- 
+
++ [Groups](static/groups.txt)
++ [Seating Chart](static/wlh2204.pdf)
++ [Phone-App](http://www1.iclicker.com/mobile-polling-iclicker-go)
+
+-->
+
+
 ## Office Hours
 
-- Ranjit  : MW 5:00-6:00p
+- Ranjit  : Th 2-3p
 
 ## Description
 

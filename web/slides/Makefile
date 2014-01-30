@@ -12,7 +12,7 @@ HANDOUT=$(PANDOC) --highlight-style tango --css=text.css -w html5
 .SUFFIXES: .html .markdown
 
 slides: 
-	for file in *.markdown; do $(DZSLIDES) $$file -o $$file.slides.html; done
+	for file in *.lhs ; do $(DZSLIDES) $$file -o $$file.slides.html; done
 #	for file in *.markdown; do $(HANDOUT) $$file -o $$file.handout.html; done
 #	for file in *.markdown; do $(PANDOC) $$file -o $$file.pdf; done
 
