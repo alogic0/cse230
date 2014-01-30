@@ -104,6 +104,8 @@ In a nutshell, a typeclass is a collection of operations (functions)
 that must exist for the underlying type. For example, lets look at 
 possibly the simplest typeclass `Eq`
 
+> -- HEREHEREHERE
+
 > data RJ = Ranjit | Jhala deriving (Eq, Show)
 
 > x = Ranjit
@@ -113,8 +115,8 @@ possibly the simplest typeclass `Eq`
 
 ~~~~~{.haskell}
 class  Eq a  where
-    (==)           :: a -> a -> Bool
-    (/=)           :: a -> a -> Bool
+  (==) :: a -> a -> Bool
+  (/=) :: a -> a -> Bool
 ~~~~~
 
 That is, a type `a` can be an instance of `Eq` as long as there are two
@@ -124,7 +126,7 @@ that make a particular datatype be viewable,
 
 ~~~~~{.haskell}
 class  Show a  where
-    show :: a -> String 
+  show :: a -> String 
 ~~~~~
 
 Indeed, we can test this on different (built-in) types
@@ -260,29 +262,60 @@ lookup tables etc.)
 >              | Bind k v (BST k v) (BST k v) 
 >              deriving (Show)
 
-> keysOfTree :: BST k v -> [k]
-> keysOfTree Empty            = []
-> keysOfTree (Bind key _ l r) = keysOfTree l ++ [key] ++ keysOfTree r  
+Did you get that? 
 
-> valsOfTree :: BST k v -> [v]
-> valsOfTree Empty            = []
-> valsOfTree (Bind _ val l r) = valsOfTree l ++ [val] ++ valsOfTree r  
+Quiz
+----
 
-> totalOfTree :: BST k Integer -> Integer
-> totalOfTree Empty           = 0
-> totalOfTree (Bind _ val l r) = totalOfTree l + val + totalOfTree r 
+What is the type of:
 
+> zoo Empty            = []
+> zoo (Bind key _ l r) = zoo l ++ [key] ++ zoo r  
 
-  foo :: (k -> v -> BASE -> BASE -> BASE) -> BASE -> BST k v -> BASE
-
-> foo op base Empty          = base
-> foo op base (Bind k v l r) = op k v (foo op base l) (foo op base r)
+a. `BST k v -> k`
+b. `BST k v -> [k]`
+c. `BST k v -> [(k, v)]`
+d. `BST k v -> [v]`
+e. `BST k v -> v`
 
 
-> keysOfTree'  = foo (\k _ lr rr -> lr ++ [k] ++ rr) []
-> valsOfTree'  = foo (\_ v lr rr -> lr ++ [v] ++ rr) []
-> totalOfTree' = foo (\_ v lr rr -> lr + v + rr)     0 
+~~~~~{.haskell}
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+~~~~~
 
+
+Exercise
+--------
+
+Fill in the definition of:
+
+> foldBST op base Empty          = undefined 
+> foldBST op base (Bind k v l r) = undefined
+
+so that the following functions behave as the names suggest!
+
+> keysOfTree'  = foldBST (\k _ lr rr -> lr ++ [k] ++ rr) []
+> valsOfTree'  = foldBST (\_ v lr rr -> lr ++ [v] ++ rr) []
+> totalOfTree' = foldBST (\_ v lr rr -> lr + v + rr)     0 
+
+
+Binary Search Ordering
+----------------------
 
 We will call this type `BST` to abbreviate [Binary Search Tree][2] which
 are trees where keys are ordered such that at each node, the keys appearing
@@ -293,17 +326,6 @@ might look like
 
 ![BST example](/static/lec5_bst.png)
 
-We must ensure that the invariant is preserved by the `insert` function. 
-In the functional setting, the `insert` will return a brand new tree. 
-
-
-> insert k v Empty = Bind k v Empty Empty 
-> insert k v (Bind k' v' l r) 
->   | k == k'      = Bind k v l r
->   | k <  k'      = Bind k' v' (insert k v l) r 
->   | otherwise    = Bind k' v' l (insert k v r)
-
-
 The organization of the BST allows us to efficiently search the tree 
 for a key.
 
@@ -312,6 +334,136 @@ for a key.
 >   | k <  k'    = find k l
 >   | otherwise  = find k r
 > find k Empty = Nothing
+
+
+We must ensure that the invariant is preserved by the `insert` function. 
+In the functional setting, the `insert` will return a brand new tree. 
+
+Lets fill in the blanks to develop a function that **adds** a new key-value
+binding to the tree:
+
+~~~~~{.haskell}
+insert :: k -> v -> BST k v -> BST k v
+~~~~~
+
+Quiz
+----
+
+~~~~~{.haskell}
+insert k v Empty = undefined
+~~~~~
+
+What shall we fill in for `undefined`?
+
+a. `Empty`
+b. `Bind k v`
+c. `v`
+d. `Bind k v Empty Empty`
+e. `(k, v)`
+
+~~~~~{.haskell}
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+~~~~~
+
+
+Quiz
+----
+
+Ok, now lets move to the more interesting case:
+
+> insert k v (Bind k' v' l r) 
+>   | k == k'      = undefined
+
+What shall we fill in for `undefined`? 
+
+a. `Empty`
+b. `Bind k v  l     r`
+c. `Bind k v' l     r`
+d. `Bind k v  Empty Empty`
+e. `Bind k v' Empty Empty`
+
+~~~~~{.haskell}
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+~~~~~
+
+
+
+Quiz
+----
+
+And finally,
+
+> insert k v (Bind k' v' l r) 
+>   | k < k'      = undefined
+
+What shall we fill in for `undefined`? 
+
+a. `Empty`
+b. `insert k v l`
+c. `insert k v r`
+d. `Bind k v (insert k v l) r
+e. `Bind k v l (insert k v r)`
+
+
+~~~~~{.haskell}
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+~~~~~
+
+
+All in one place:
+
+~~~~~{.haskell}
+insert k v Empty = Bind k v Empty Empty 
+insert k v (Bind k' v' l r) 
+  | k == k'      = Bind k v l r
+  | k <  k'      = Bind k' v' (insert k v l) r 
+  | otherwise    = Bind k' v' l (insert k v r)
+~~~~~
 
 The BST ordering obviates the need for any backtracking. If additionally 
 if the tree is kept *balanced* we ensure very efficient searching.
@@ -331,9 +483,9 @@ function that will turn an association list into an appropriate `BST`.
 
 Now, we can just do
 
-> t = ofList [("chimichanga", 5.25)
->            ,("burrito"    , 4.50)
->            ,("frijoles"   , 2.75)]
+> t = ofList [ ("chimichanga", 5.25)
+>            , ("burrito"    , 4.50)
+>            , ("frijoles"   , 2.75)]
 
 After which we can query the table
 
@@ -349,23 +501,48 @@ Nothing
 ~~~~~
 
 Similarly, it makes sense to implement a `toList` which will convert the
-map into an association list. First, lets write a generic `foldBST`
-
-> foldBST f b Empty          = b 
-> foldBST f b (Bind k v l r) = f k v (foldBST f b l) (foldBST f b r)
-
-after which `toList` is simply (but rather inefficiently!)
+map into an association list, we can reuse `foldBST` from before:
 
 > toList =  foldBST (\k v l r -> l ++ [(k, v)] ++ r) []
 
+Quiz
+----
+
+Recall that
+
 ~~~~~{.haskell}
-ghci> toList t 
-[("burrito", 4.50), ("chimichanga", 5.25), ("frijoles", 2.75)]
+t = ofList [ ("chimichanga", 5.25)
+           , ("burrito"    , 4.50)
+           , ("frijoles"   , 2.75)]
 ~~~~~
 
-Exercise 
---------
-Why is the output sorted (by key) ?
+What does `toList t` return?
+
+a. `[("burrito", 4.50)    , ("chimichanga", 5.25) , ("frijoles", 2.75)]`
+b. `[("chimichanga", 5.25), ("burrito", 4.50)     , ("frijoles", 2.75)]`
+c. `[("frijoles", 2.75)   , ("burrito", 4.50)     , ("chimichanga", 5.25)]`
+d. `[]`
+e. none of the above.
+
+~~~~~{.haskell}
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+~~~~~
+
 
 
 Constraint Propagation
@@ -432,11 +609,42 @@ read :: (Read a) => String -> a
 ~~~~~
 
 which can parse a string and turn it into an `a`. Thus, `Read` is, in a
-sense, the opposite of `Show`. However, if we do
+sense, the opposite of `Show`.
+
+Quiz
+----
+
+What does the expression `read "2"` evaluate to?
+
+a. compile time error
+b. `"2" :: String`
+c. `2   :: Integer`
+d. `2.0 :: Double`
+e. run-time exception 
+
 
 ~~~~~{.haskell}
-ghci> read "2"
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
 ~~~~~
+
+
+
+
 
 Haskell is foxed, because it doesn't know what to convert the string to! 
 Did we want an `Int` or a `Double` ? Or maybe something else altogether.
@@ -506,9 +714,55 @@ ghci> Empty == Empty
 True
 ~~~~~
 
-But the equality test is rather too *structural*, as in, are the two trees
-*exactly* the same, rather than what we might want, which is, are the two
-underlying *maps* exactly the same. Consequently we get
+Quiz
+----
+
+Recall that
+
+~~~~~{.haskell}
+t = ofList [ ("chimichanga", 5.25)
+           , ("burrito"    , 4.50)
+           , ("frijoles"   , 2.75)]
+~~~~~
+
+What does
+
+~~~~~{.haskell}
+ghci> t == ofList (toList t)
+~~~~~
+
+evaluate to?
+
+a. `True`
+b. `False`
+c. Compile-time error (`No instance of Eq...`)
+d. Other type error
+e. Run time exception
+
+~~~~~{.haskell}
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+~~~~~
+
+
+The equality test is rather too *structural*, as in, 
+are the two trees *exactly* the same, rather than what
+we might want, which is, are the two underlying *maps*
+exactly the same. Consequently we get
 
 ~~~~~{.haskell}
 ghci> t == ofList (toList t)
@@ -546,14 +800,61 @@ class Eq a  where
     x /= y         = not (x == y)
 ~~~~~
 
-Thus, to define our own equality (and disequality) procedures we write
+Quiz
+----
+
+Thus, to define our own equality (and disequality) procedures 
+that are *robust* to ordering we might write:
+
+~~~~~{.haskell}
+instance Eq (BST k v) where
+  t1 == t2 = toList t1 == toList t2 
+~~~~~
+
+Does it work?
+
+a. *Yes*
+b. No, because the orders may differ.
+c. No, because it does not compile.
+d. No, because it is too slow.
+e. *Yes*
+
+~~~~~{.haskell}
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+~~~~~
+
+Well we can only compare two values of type `[(k, v)]` ...  
+- if we can compare two values of `(k, v)` ...
+- if we can compare the two `k` and the two `v`.
+
+Hence, we fix the above definition:
+
+> instance (Eq k, Eq v) => Eq (BST k v) where
+>   t1 == t2 = toList t1 == toList t2 
 
 
+The above instance declaration states that 
 
-The above instance declaration states that if `k` and `v` are instances of
-`Eq`, that is can be compared for equality, then `BST k v` can be compared
-for equality, via the given procedure. Thus, once we have supplied the above
-we get
+- **if** `k` and `v` are instances of `Eq` (i.e. can be compared for equality), 
+- **then** `BST k v` can be compared for equality, 
+
+via the given procedure. Thus, once we have supplied 
+the above we get
 
 ~~~~~{.haskell}
 ghci> t == ofList (toList t)
@@ -724,8 +1025,8 @@ JArr [JObj [("day",JStr "monday"),("loc",JStr "zanzibar")],JObj [("day",JStr "tu
 to ask for a magical `toJSON` that *just works?*
 
 
-Typeclasses To The Rescue
--------------------------
+Typeclasses To The Rescue!
+--------------------------
 
 Of course there is a better way, and the the route is paved by typeclasses!
 
