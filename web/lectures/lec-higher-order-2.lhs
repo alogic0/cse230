@@ -181,6 +181,10 @@ box of the structure. So, we will turn that base datatype into a
 >             | OneAndMore a (List a) 
 >             deriving (Show)
 
+  Empty      :: List a
+  OneAndMore :: a -> List a -> List a
+
+
 Now, as before, we may define each of the types as simply *instances* 
 of the above parameterized type
 
@@ -309,9 +313,31 @@ ghci> height st3
 How do we compute the *number* of leaf elements in the tree?
 
 ~~~~~{.haskell}
-size :: Tree a -> Int
+ht (Leaf _)     = 0
+ht (Node l r)   = 1 + max (ht l) (ht r)
+
 size (Leaf _)   = 1
 size (Node l r) = (size l) + (size l)
+
+foo :: (a -> b) -> (b -> b-> b) -> Tree a -> b 
+foo b op (Leaf x)   = b x
+foo b op (Node l r) = (foo b op l) `op` (foo b op r)
+
+
+bar               :: (b -> b-> b) -> Tree b -> b 
+bar op (Leaf x)   = x
+bar op (Node l r) = (bar op l) `op` (bar op r)
+
+
+ht   = foo (\_ -> 0)    (\xl xr -> 1 + max xl xr)
+sz   = foo (\_ -> 1)    (+)
+elts = foo (\x -> [x])  (++) 
+
+
+elts :: Tree a -> [a]
+elts = foo [] (:) 
+elts = foo [] (++)
+
 ~~~~~
 
 

@@ -104,6 +104,13 @@ In a nutshell, a typeclass is a collection of operations (functions)
 that must exist for the underlying type. For example, lets look at 
 possibly the simplest typeclass `Eq`
 
+> data RJ = Ranjit | Jhala deriving (Eq, Show)
+
+> x = Ranjit
+> y = Ranjit
+
+
+
 ~~~~~{.haskell}
 class  Eq a  where
     (==)           :: a -> a -> Bool

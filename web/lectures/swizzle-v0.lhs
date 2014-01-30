@@ -1,4 +1,5 @@
 > import System.Environment
+> import Data.Maybe 
 
 Swizzling One Character
 -----------------------
@@ -51,9 +52,39 @@ the rubber must hit the road. The next function takes a filename as
 input and returns an action that corresponds to the swizzling of the 
 file.
 
+> (|>) x f  = f x
+
+
 > swizzleFile :: FilePath -> IO ()
 > swizzleFile f = do d <- readFile f
 >                    writeFile (f ++ ".swz") (swizzleContent d) 
+
+
+swizMany :: [FilePath] -> IO ()
+
+
+> swizMany files = map swizzleFile files
+
+
+
+> smashActions        :: [IO ()] -> IO ()
+> smashActions []     = return ()
+> smashActions (a:as) = do a
+>                          smashActions as
+> 
+>
+
+do act1 
+   act2
+
+
+
+
+
+
+
+
+
 
 
 Hmm, it would be nice to be able to swizzle many files at one shot.
