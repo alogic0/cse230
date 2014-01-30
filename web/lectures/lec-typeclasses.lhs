@@ -544,7 +544,6 @@ e. none of the above.
 ~~~~~
 
 
-
 Constraint Propagation
 ----------------------
 
@@ -851,16 +850,15 @@ Hence, we fix the above definition:
 The above instance declaration states that 
 
 - **if** `k` and `v` are instances of `Eq` (i.e. can be compared for equality), 
-- **then** `BST k v` can be compared for equality, 
+- **then** `BST k v` can be compared for equality, via the given procedure. 
 
-via the given procedure. Thus, once we have supplied 
-the above we get
+
+Thus, once we have supplied the above we get
 
 ~~~~~{.haskell}
 ghci> t == ofList (toList t)
 True
 ~~~~~
-
 
 In general, when instantiating a typeclass, Haskell will check that we have 
 provided a *minimal implementation* containing enough functions from which
