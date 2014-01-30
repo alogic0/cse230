@@ -431,7 +431,7 @@ What shall we fill in for `undefined`?
 a. `Empty`
 b. `insert k v l`
 c. `insert k v r`
-d. `Bind k v (insert k v l) r
+d. `Bind k v (insert k v l) r`
 e. `Bind k v l (insert k v r)`
 
 
@@ -838,6 +838,7 @@ e. *Yes*
 ~~~~~
 
 Well we can only compare two values of type `[(k, v)]` ...  
+
 - if we can compare two values of `(k, v)` ...
 - if we can compare the two `k` and the two `v`.
 
