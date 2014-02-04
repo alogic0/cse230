@@ -606,11 +606,11 @@ instance Monad [] where
 
 What must the type of `returnForList` be ?
 
-a.TODO
-b.
-c.
-d.
-e.
+a. `[a]`
+b. `a -> a`
+c. `a -> [a]`
+d. `[a] -> a`
+e. `[a] -> [a]`
 
 
 
@@ -632,12 +632,24 @@ instance Monad [] where
 
 What must the type of `bindForList` be?
 
-a. TODO
-b.
-c.
-d.
-e.
+a. `[a] -> [b] -> [b]` 
+b. `[a] -> (a -> b) -> [b]`
+c. `[a] -> (a -> [b]) -> b`
+d. `[a] -> (a -> [b]) -> [b]`
+e. `[a] -> [b]`
 
+~~~~~{.haskell}
+
+
+
+
+
+
+
+
+
+
+~~~~~
 
 
 Quiz
@@ -648,12 +660,27 @@ Which of the following is a valid
 `bindForList :: [a] -> (a -> [b]) -> [b]`? 
 
 ~~~~~{.haskell}
--- a TODO
+-- a
+bfl f []     = []
+bfl f (x:xs) = f x : bfl f xs
+
 -- b
+bfl f []     = []
+bfl f (x:xs) = f x ++ bfl f xs
+
 -- c
+bfl []     f = []
+bfl (x:xs) f = f x ++ bfl f xs
+
 -- d
+bfl []     f = []
+bfl (x:xs) f = f x : bfl f xs
+
 -- e
+bfl []     f = []
+bfl (x:xs) f = x : f xs
 ~~~~~
+
 
 Making lists into a monadic type is straightforward:
 
@@ -681,8 +708,8 @@ lists can be defined using the do notation as follows:
 ~~~~~{.haskell}
 pairs :: [a] -> [b] -> [(a,b)]
 pairs xs ys =  do x <- xs
-                   y <- ys
-                   return (x, y)
+                  y <- ys
+                  return (x, y)
 ~~~~~
 
 
@@ -692,7 +719,7 @@ is interesting to note the similarity to how this function
 would be defined using the list comprehension notation:
 
 ~~~~~{.haskell}
-pairs xs ys = [(x,y) | x <- xs, y <- ys]
+pairs xs ys = [(x, y) | x <- xs, y <- ys]
 ~~~~~
 
 or in Python syntax:
