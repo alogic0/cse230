@@ -106,7 +106,7 @@ possibly the simplest typeclass `Eq`
 
 > -- HEREHEREHERE
 
-> data RJ = Ranjit | Jhala deriving (Eq, Show)
+> data RJ = Ranjit | Jhala 
 
 > x = Ranjit
 > y = Ranjit
@@ -149,9 +149,11 @@ and then calls `show` on the result. Thus, if we create a
 > data Unshowable = A | B | C 
 
 > instance Show Unshowable where
->   show A = "A"
->   show B = "BB"
->   show C = "CCC"
+>   show = whatAStupidName 
+
+> whatAStupidName A = "A"
+> whatAStupidName B = "B"
+> whatAStupidName C = "C"
 
 > data List a = NULL 
 >             | CONS a (List a)
@@ -260,7 +262,6 @@ lookup tables etc.)
 
 > data BST k v = Empty 
 >              | Bind k v (BST k v) (BST k v) 
->              deriving (Show)
 
 Did you get that? 
 
@@ -805,10 +806,8 @@ Quiz
 Thus, to define our own equality (and disequality) procedures 
 that are *robust* to ordering we might write:
 
-~~~~~{.haskell}
-instance Eq (BST k v) where
-  t1 == t2 = toList t1 == toList t2 
-~~~~~
+> instance (Eq k, Eq v) => Eq (BST k v) where
+>   t1 == t2 = toList t1 == toList t2 
 
 Does it work?
 
@@ -843,10 +842,6 @@ Well we can only compare two values of type `[(k, v)]` ...
 - if we can compare the two `k` and the two `v`.
 
 Hence, we fix the above definition:
-
-> instance (Eq k, Eq v) => Eq (BST k v) where
->   t1 == t2 = toList t1 == toList t2 
-
 
 The above instance declaration states that 
 
@@ -1064,15 +1059,18 @@ JStr "guacamole"
 Bootstrapping Instances
 -----------------------
 
-The real fun begins when we get Haskell to automaticall bootstrap the above 
-functions to work for lists and association lists!
+The real fun begins when we get Haskell to automatically 
+bootstrap the above functions to work for lists and 
+association lists!
 
 > instance (JSON a) => JSON [a] where
 >   toJSON = JArr . map toJSON
 
-Whoa! The above says, if `a` is an instance of `JSON`, that is, if you can
-convert `a` to `JVal` then here's a generic recipe to convert lists of `a` 
-values! 
+Whoa! 
+
+The above says, if `a` is an instance of `JSON`, that is, 
+if you can convert `a` to `JVal` then here's a generic 
+recipe to convert lists of `a` values! 
 
 ~~~~~{.haskell}
 ghci> toJSON [True, False, True]
@@ -1140,6 +1138,7 @@ True
 
 Exercise
 --------
+
 Why did we have to write a type annotation `33 :: Double` in the above
 example? Can you figure out a way to remove it?
 
@@ -1148,8 +1147,8 @@ example? Can you figure out a way to remove it?
 To wrap everything up, lets write a routine to serialize our `BST`
 maps.
 
-> instance (JSON v) => JSON (BST String v) where
->   toJSON = JObj . map (second toJSON) . toList 
+-- > instance (JSON v) => JSON (BST String v) where
+-- >   toJSON = JObj . map (second toJSON) . toList 
 
 Now lets make up a complex Haskell value with an embedded `BST`.
 
