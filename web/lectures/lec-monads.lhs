@@ -701,16 +701,36 @@ results: `xs >>= f` applies the function f to each of the results
 in the list xs to give a nested list of results, which is then
 concatenated to give a single list of results.
 
-As a simple example of the use of the list monad, a function
-that returns all possible ways of pairing elements from two 
-lists can be defined using the do notation as follows:
+Quiz
+----
+
+Consider the function:
 
 ~~~~~{.haskell}
-pairs :: [a] -> [b] -> [(a,b)]
-pairs xs ys =  do x <- xs
+zoink xs ys =  do x <- xs
                   y <- ys
                   return (x, y)
 ~~~~~
+
+What does `zoink ['a', 'b'] [1,2]` evaluate to?
+
+a. `[('a', 1), ('b', 2)]`
+b. `[('a',  2), ('b', 1)]`
+c. `[('a', 1), ('a', 2), ('b', 1), ('b', 2)]`
+d. `[('b', 1), ('b', 2), ('a', 1), ('a', 2)]`
+e. `[('a', 1), ('b', 1), ('a', 2), ('b', 2)]`
+
+~~~~~{.haskell}
+
+
+
+
+~~~~~
+
+As a simple example of the use of the list monad, the 
+function `zoink` above returns all possible ways of 
+pairing elements from two lists can be defined using 
+the do notation.
 
 
 That is, consider each possible value `x` from the list `xs`, and 
@@ -753,6 +773,19 @@ ghci> canonize vals0
 [0, 1, 0, 0, 2]
 ~~~~~
 
+similarly, I want:
+
+~~~~~{.haskell}
+ghci> canonize ["zebra", "mouse", "zebra", "zebra", "owl"] 
+[0, 1, 0, 0, 2]
+~~~~~
+
+**DO IN CLASS** 
+How would you write `canonize` in Python?
+
+In Python, we could write such a function as:
+
+~~~~~{.python}
 def canon(xs):
   n = 0
   d = {}
@@ -764,12 +797,12 @@ def canon(xs):
       n   += 1
 
   return [d[y] for y in xs]
+~~~~~
 
+**DO IN CLASS** 
+How would you write `canonize` in Haskell? 
 
-
-
-
-
+~~~~~{.haskell}
 canon xs = [d ! x | x <- xs] 
   where 
     (_, d) = go (0, empty) xs
@@ -777,33 +810,7 @@ canon xs = [d ! x | x <- xs]
       | x `mem` d    = go (n  , d) xs
       | otherwise    = go (n+1, add x n d) xs
     go (n, d) []     = (n, d)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-similarly, I want:
-
-~~~~~{.haskell}
-ghci> canonize ["zebra", "mouse", "zebra", "zebra", "owl"] 
-[0, 1, 0, 0, 2]
 ~~~~~
-
-**DO IN CLASS** 
-How would you write `canonize` in Python?
-
-**DO IN CLASS** 
-How would you write `canonize` in Haskell? 
 
 Now, lets look at another problem. Consider the following tree datatype.
 
@@ -819,23 +826,57 @@ Lets write a function
 leafLabel :: Tree a -> Tree (a, Int)
 ~~~~~
 
-that assigns each leaf a distinct integer value, so we get the following
-behavior
+that assigns each leaf a distinct integer value, so that
 
 ~~~~~{.haskell}
 ghci> leafLabel (Node (Node (Leaf 'a') (Leaf 'b')) (Leaf 'c'))
-                (Node (Node (Leaf ('a', 0)) (Leaf ('b', 1))) (Leaf ('c', 2)))
+
+(Node (Node (Leaf ('a', 0)) (Leaf ('b', 1))) (Leaf ('c', 2)))
 ~~~~~
 
-**DO IN CLASS** 
-How would you write `leafLabel` in Haskell? 
+Quiz
+----
 
+Lets write `leafLabel` in Haskell!
+
+> leafLabel   :: Tree a -> Tree (a, Int)
+> leafLabel t = t' 
+>   where
+>     (_, t') = helper 0 t
+
+What must the type of `helper` be?
+
+a. `Int -> Tree a -> Int`
+b. `Int -> Tree a -> Tree a`
+c. `Int -> Tree a -> (Int, Tree a)`
+d. `Int -> Tree a -> (Int, Tree (a, Int))`
+e. `Int -> Tree (a, Int) -> (Int, Tree (a, Int))`
+
+~~~~~{.Haskell}
+
+
+
+
+~~~~~
+
+Indeed, the hard work is in the recursive function:
+
+> helper n (Leaf x)   = (n+1, Leaf (x, n))
+> helper n (Node l r) = (n'', Node l' r' )
+>   where 
+>     (n', l')        = helper n  l
+>     (n'', r')       = helper n' r
+
+Wow. Thats pretty complex. We have to track the counter `n`
+and keep threading it through the computation. 
+
+Sometimes, you just want to increment a global variable...
 
 The State Monad
 ===============
 
 Now let us consider the problem of writing functions that
-manipulate some kind of state, represented by a type whose
+manipulate some kind of **state**, represented by a type whose
 internal details are not important for the moment:
 
 ~~~~~{.haskell}
@@ -982,24 +1023,25 @@ of Haskell, rather than the `data` mechanism.)
 A simple example
 ----------------
 
-Intuitively, a value of type `ST a` (or `ST0 a`) is simply an *action* that
-returns an `a` value. The sequencing combinators allow us to combine simple
-actions to get bigger actions, and the `apply0` allows us to *execute* an
-action from some initial state.
+Intuitively, a value of type `ST a` (or `ST0 a`) is simply an
+*action* that returns an `a` value. The sequencing combinators
+allow us to combine simple actions to get bigger actions, and 
+the `apply0` allows us to *execute* an action from some initial 
+state.
 
-To get warmed up with the state-transformer monad, consider the simple
-*sequencing* combinator
+To get warmed up with the state-transformer monad, consider 
+the simple *sequencing* combinator
 
 ~~~~~{.haskell}
 (>>) :: Monad m => m a -> m b -> m b
 ~~~~~
 
-in a nutshell, `a1 >> a2` takes the actions `a1` and `a2` and returns the
-*mega* action which is `a1`-then-`a2`-returning-the-value-returned-by-`a2`.
+in a nutshell, `a1 >> a2` takes the actions `a1` and `a2` and
+returns the *mega* action which is `a1`-then-`a2`-returning-the-value-returned-by-`a2`.
 
-
-In other words, the function can be defined using the notion of a state 
-transformer, in which theinternal state is simply the next fresh integer
+In other words, the function can be defined using the notion 
+of a state transformer, in which the internal state is simply
+the next fresh integer
 
 > type State = Int
 
@@ -1010,46 +1052,57 @@ its result, and the next integer as the new state:
 > fresh :: ST0 Int
 > fresh =  S0 (\n -> (n, n+1))
 
-
 Note that `fresh` is a *state transformer* (where the state 
 is itself just `Int`), that is an *action* that happens to 
-return integer values. What do you think the following does:
+return integer values. 
 
-> wtf1 = fresh >> 
->        fresh >> 
->        fresh >> 
->        fresh
+Quiz
+----
 
-**DO IN CLASS** 
-What do you think this would return:
+Consider `wtf1` defined as:
+
+> wtf1 = fresh >> fresh >> fresh >> fresh
+
+What does the following evaluate to?
 
 ~~~~~{.haskell}
 ghci> apply0 wtf1 0
 ~~~~~
 
-Indeed, we are just chaining together four `fresh` actions to get a single
-action that "bumps up" the counter by `4`.
+a. Type Error
+b. `0`
+c. `3`
+d. `(4, 4)`
+e. `(3, 4)`
 
-Now, the `>>=` sequencer is kind of like `>>` only it allows you to
-"remember" intermediate values that may have been returned. Similarly, 
+~~~~~{.haskell}
+
+
+
+
+
+~~~~~
+
+Indeed, we are just chaining together four `fresh` 
+actions to get a single action that "bumps up" the
+counter by `4`.
+
+Now, the `>>=` sequencer is kind of like `>>` only 
+it allows you to *remember* intermediate values that 
+may have been returned. Similarly, 
 
 ~~~~~{.haskell}
 return :: a -> ST0 a
 ~~~~~
 
-takes a value `x` and yields an *action* that doesnt actually transform the
-state, but just returns the same value `x`. So, putting things together,
-how do you think this behaves?
+takes a value `x` and yields an *action* that doesnt
+actually transform the state, but just returns the 
+same value `x`. 
 
-> wtf4 = fresh >>= \_ ->
->        fresh >>= \_ ->  
->        fresh >>= \_ ->
->        fresh  
+Quiz
+----
 
-  wtf4 = do fresh
-            fresh
-            fresh
-            fresh
+Suppose we define `wtf2` as: 
 
 > wtf2 = fresh >>= \n1 ->
 >        fresh >>= \n2 ->  
@@ -1057,14 +1110,20 @@ how do you think this behaves?
 >        fresh >>
 >        return [n1, n2]
 
-**DO IN CLASS** 
-What do you think this would return:
+What does the following evaluate to?
 
 ~~~~~{.haskell}
 ghci> apply0 wtf2 0
 ~~~~~
 
-Now, the `do` business is just nice syntax for the above:
+a. `([0, 1], 4)`
+b. `[1, 2]`
+c. `([4, 4], 4)`
+d. `([3, 3], 4)`
+e. `[4, 4]`
+
+
+Recall, the `do` business is just nice syntax for the above. Hence,
 
 > wtf3 = do n1 <- fresh
 >           n2 <- fresh
@@ -1092,39 +1151,13 @@ Here is a simple example:
 
 > tree' =  Node (Node (Leaf ('a', 0)) (Leaf ('b', 1))) (Leaf ('c', 2))
 
-> tagTree :: Tree a -> Tree (a, Int)
-> tagTree t = snd $ helper 0 t
-
-> helper n (Leaf x)   = (n+1, Leaf (x, n))
-> helper n (Node l r) = (n'', Node l' r' )
->   where (n', l')    = helper n  l
->         (n'', r')   = helper n' r
-
-> tagTreeM :: Tree a -> ST0 (Tree (a, Int))
->
-> tagTreeM (Leaf x) 
->   = do n <- fresh
->        return $ Leaf (x, n)
->
-> tagTreeM (Node l r) 
->   = do l' <- tagTreeM l
->        r' <- tagTreeM r
->        return $ Node l' r'
-
-
-
-
-
-(helper n l) (helper (n + size l) r)
-
-
-
-
 Now consider the problem of defining a function that labels each 
-leaf in such a tree with a unique or "fresh" integer.  This can
-be achieved by taking the next fresh integer as an additional 
-argument to the function, and returning the next fresh integer
-as an additional result. In short, we can use
+leaf in such a tree with a unique or **fresh** integer. 
+This can be achieved by taking the next fresh integer as an 
+additional argument to the function, and returning the 
+next fresh integer as an additional result.
+
+In short, we can use
 
 ~~~~~{.haskell}
 fresh :: ST0 Int
@@ -1151,10 +1184,12 @@ Finally, we can now define a function that labels a tree by
 simply applying the resulting state transformer with zero as
 the initial state, and then discarding the final state:
 
-> label  :: Tree a -> Tree (a, Int)
-> label t = fst (apply0 (mlabel t) 0)
+> label       :: Tree a -> Tree (a, Int)
+> label t     = t' 
+>   where 
+>     (t', _) = apply0 (mlabel t) 0
 
-For example, `label tree` gives the following result:
+For example, `mlabel tree` gives the following result:
 
 ~~~~~{.haskell}
 ghci> label tree
@@ -1345,7 +1380,8 @@ We write an *action* that returns the next fresh integer as
 >   put $ s { index = n + 1 }  
 >   return n 
 
-Similarly, we want an action that updates the frequency of a given element `k`
+Similarly, we want an action that updates the frequency of
+a given element `k`
 
 > updFreqM k = do 
 >   s    <- get               
@@ -1436,36 +1472,18 @@ An important benefit of abstracting out the notion of a monad into
 a single typeclass, is that it then becomes possible to define a 
 number of useful functions that work in an arbitrary monad.  
 
+Quiz
+----
 
-We've already seen this in the `pairs` function
+~~~~~{.haskell}
+pairs xs ys =  do x <- xs
+                  y <- ys
+                  return (x, y)
+~~~~~
 
-instance (Monad m) => (Functor m) where
-  fmap :: (a -> b) -> m a -> m b
-  fmap f z = do x <- z
-                return (f x)
-
-
-> flibberty f z = do x <- z 
->                    return (f x)
-
+What is the type of `pairs`?
 
 
-
-
-
-> pairs xs ys = do
->   x <- xs
->   y <- ys
->   return (x, y)
-
-
-
-
-
-
-
-What do you think the type of the above is ? (I left out an annotation
-deliberately!)
 
 ~~~~~{.haskell}
 ghci> :type pairs
@@ -1511,21 +1529,27 @@ ghci> pairs getChar getChar
 40('4','0')
 ~~~~~
 
-For example, the `map` function on lists can be generalised 
-as follows:
+
+
+
+A more useful application, is that `map` function on 
+lists can be generalised  as follows:
 
 > liftM     :: Monad m => (a -> b) -> m a -> m b
 > liftM f mx = do x <- mx
 >                 return (f x)
 
-Similarly, `concat` on lists generalises to:
+More generally, we can automatically convert **any** 
+monadic type into one that we can `fmap` over!
 
-> join    :: Monad m => m (m a) -> m a
-> join mmx = do mx <- mmx
->               x  <- mx
->               return x
+~~~~~{.haskell}
+instance (Monad m) => (Functor m) where
+  fmap     :: (a -> b) -> m a -> m b
+  fmap f z = do x <- z
+                return (f x)
+~~~~~~
 
-
+The above lets us get the `map` operation on lists *for free*
 
 As a final example, we can define a function that transforms
 a list of monadic expressions into a single such expression that
@@ -1539,6 +1563,22 @@ sequence (mx:mxs) =  do x  <- mx
                         xs <- sequence mxs
                         return (x:xs)
 ~~~~~
+
+Quiz
+----
+
+> join    :: Monad m => m (m a) -> m a
+> join mmx = do mx <- mmx
+>               x  <- mx
+>               return x
+
+What does `join [[1], [2,3], [4,5,6]]` evaluate to?
+
+a. `[6]`
+b. `[4,5,6]`
+c. `[1,2,3,4,5,6]`
+d. `[[4,5,6]]`
+e. Type error!
 
 
 Monads As Programmable Semicolon
