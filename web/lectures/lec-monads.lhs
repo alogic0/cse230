@@ -38,11 +38,11 @@ programming pattern as a definition.  Before considering monads,
 let us review this idea, by means of two simple functions:
 
 ~~~~~{.haskell}
-inc	     :: [Int] -> [Int]
+inc	       :: [Int] -> [Int]
 inc []     =  []
 inc (n:ns) =  n+1 : inc ns
 
-sqr	     :: [Int] -> [Int]
+sqr	       :: [Int] -> [Int]
 sqr []     =  []
 sqr (n:ns) =  n^2 : sqr ns
 ~~~~~
@@ -74,6 +74,10 @@ What is the type of `foo` defined as:
 foo f z = case z of 
             Just x  -> Just (f x)
             Nothing -> Nothing 
+
+map f []  = [] 
+map f [x] = [f x]
+
 ~~~~~
 
 a. `Maybe a`
@@ -82,6 +86,23 @@ c. `(a -> b) -> a -> Maybe b`
 d. `(a -> b) -> Maybe a -> b`
 e. `(a -> Maybe b) -> Maybe a -> Maybe b`
 
+
+`(a -> b) -> List a  -> List b`
+`(a -> b) -> Maybe a -> Maybe b`
+
+class Functor t where
+  fmap :: (a -> b) -> t a -> t b
+
+instance Functor [] where
+  fmap f [] = []
+  fmap f (x:xs) = f x : (fmap f xs)
+
+instance Functor [] where
+  fmap f Nothing = Nothing 
+  fmap f (Just x) = Just (f x)
+
+instance Functor IO where
+  fmap = iomap
 
 ~~~~~{.haskell}
 
@@ -137,7 +158,7 @@ iomap f x = do y <- f x     -- c
                return y
 
 iomap f x = do y <- x       -- d
-               return f y
+               return (f y)
 
 iomap f x = do y <- x       -- e
                f y

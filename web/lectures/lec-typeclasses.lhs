@@ -2,7 +2,7 @@
 title: Typeclasses 
 ---
 
-> {-# LANGUAGE OverlappingInstances, FlexibleInstances, TypeSynonymInstances #-}
+> {-# LANGUAGE OverlappingInstances, IncoherentInstances, FlexibleInstances, TypeSynonymInstances #-}
 > import Control.Arrow 
 
 We have already seen that the `+` operator works for a bunch of different
@@ -807,7 +807,7 @@ Thus, to define our own equality (and disequality) procedures
 that are *robust* to ordering we might write:
 
 > instance (Eq k, Eq v) => Eq (BST k v) where
->   t1 == t2 = toList t1 == toList t2 
+>   t1 == t2 = undefined -- toList t1 == toList t2 
 
 Does it work?
 
@@ -965,15 +965,20 @@ similarly, we have
 
 But what about collections, namely objects and arrays? We might try
 
+ foo   = bar . baz
+ foo x = bar (baz x)
+
+
+
 > doublesToJSON :: [Double] -> JVal
 > doublesToJSON = JArr . map doubleToJSON
-
 
 > boolsToJSON   :: [Bool] -> JVal
 > boolsToJSON   = JArr . map boolToJSON
 >
 > stringsToJSON :: [String] -> JVal
 > stringsToJSON = JArr . map stringToJSON 
+
 
 which of course, you could abstract by making the
 *individual-element-converter* a parameter
@@ -982,7 +987,8 @@ which of course, you could abstract by making the
 > xsToJSON f  = JArr . map f 
 >
 > xysToJSON :: (a -> JVal) -> [(String, a)] -> JVal
-> xysToJSON f = JObj . map (second f) 
+> xysToJSON f kvs = JObj (map (second f) kvs)
+
 
 but still, this is getting rather tedious, since we have to redefine
 versions for each Haskell type, and instantiate them by hand for each
