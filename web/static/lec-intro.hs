@@ -21,7 +21,42 @@ zog = pat3 2 10
 pat :: (Int, Int, Int) -> Int
 pat (x, y, z) = x * (y + z )
 
--- | HEREHEREHEREHEREHERE
+<<<<<<< HEAD
+
+
+
+
+
+
+fons        :: a -> a -> [a] -> [a]
+fons x y zs = x : y : zs 
+
+
+
+ranjitFun :: Int -> a -> [a]
+-- clone n x   = if n == 0 
+--                 then [] 
+--                 else x : (clone (n-1) x)
+               
+ranjitFun 0 x = []
+ranjitFun n x = x : ranjitFun (n-1) x
+               
+repli n x 
+  | n > 0     = x : repli (n-1) x
+  | otherwise = [] 
+
+
+
+-- clone 0 'a' = []
+-- clone 1 'a' = ['a']
+-- clone 2 'a' = ['a','a']
+-- clone 3 'a' = ['a','a','a']
+
+
+
+
+
+
 
 -- | A recursive function
 
@@ -57,6 +92,17 @@ range lo hi
   | lo > hi   = []
   | otherwise = lo : range (lo + 1) hi
 
+add []      = 0
+add [1]     = 1
+add [1,2,3] = 6
+
+addUp        :: [Int] -> Int
+addUp []     = 0
+addUp (x:xs) = x + addUp xs
+
+
+
+
 
 
 
@@ -65,34 +111,55 @@ listAdd []     = 0
 listAdd (x:xs) = x + listAdd xs
 
 
-
+-- data Circle = C (Double, Double, Double)
+-- C :: (Double, Double, Double) -> Circle
+-- radius (C (_,_,r)) = r 
+-- C (0,1,55)
+--
+--
+--
+--
+--
 -- data Circle = C Double Double Double
 -- data Square = S Double Double Double
 -- areaCircle (C x y r) = pi * r * r
 -- areaSquare (S x y d) = d * d
 
 
-data Shape  = Circle Double Double Double
+-- data [a] = [] 
+--          | (:) a [a]
+
+
+-- data Circle = Kanye Double Double Double
+-- Kanye :: Double -> Double -> Double -> Circle
+
+data Shape  = Kanye Double Double Double
             | Square Double Double Double
             | Poly [(Double, Double)]
             deriving (Show)
 
+
+
+
+
+{- 
+
 area (Circle _ _ r)    = pi * r * r
 area (Square _ _ d)    = d * d
-area (Poly ps)         = areaPoly ps
+-- area (Poly ps)         = areaPoly ps
 
 areaPoly (p1:p2:p3:rest) = areaTriangle p1 p2 p3 + areaPoly (p1:p3:rest)
 areaPoly _               = 0
 
 
-areaTriangle = undefined
+areaTriangle = undefined -- fill in as exercise
 
 c0 = Circle 0 0 2.3
 c1 = Circle 0 1 1.31
 s0 = Square 12 1 12312
 p0 = Poly   [(0,0), (4,4), (92, 92)]
 
-
+-}
 
 
 act1 = putStrLn "This is a string on a line"
@@ -103,10 +170,21 @@ act3 = putStrLn "This is the last string i promise you"
 
 
 
+main = bob
+
+zog :: [IO ()] 
+zog = [bob, bob, bob]
+
+do act1
+   act2
+   act3
+
+bob :: IO ()
+bob = do putStrLn "Hey? " 
+         name <- getLine 
+         putStrLn ("Hello " ++ name)
 
 
-
-
-main = do putStrLn "What is your name ?"
-          n <- getLine
-          putStrLn ("Happy New Year " ++ n)
+-- main = do putStrLn "What is your name ?"
+--           n <- getLine
+--           putStrLn ("Happy New Year " ++ n)

@@ -38,11 +38,11 @@ programming pattern as a definition.  Before considering monads,
 let us review this idea, by means of two simple functions:
 
 ~~~~~{.haskell}
-inc	     :: [Int] -> [Int]
+inc	       :: [Int] -> [Int]
 inc []     =  []
 inc (n:ns) =  n+1 : inc ns
 
-sqr	     :: [Int] -> [Int]
+sqr	       :: [Int] -> [Int]
 sqr []     =  []
 sqr (n:ns) =  n^2 : sqr ns
 ~~~~~
@@ -64,6 +64,60 @@ using which our two examples can now be defined more compactly:
 > inc = map (+1)
 > sqr = map (^2)
 
+
+Quiz 
+----
+
+What is the type of `foo` defined as:
+
+~~~~~{.haskell}
+foo f z = case z of 
+            Just x  -> Just (f x)
+            Nothing -> Nothing 
+
+map f []  = [] 
+map f [x] = [f x]
+
+~~~~~
+
+a. `Maybe a`
+b. `(a -> b) -> Maybe a -> Maybe b`
+c. `(a -> b) -> a -> Maybe b`
+d. `(a -> b) -> Maybe a -> b`
+e. `(a -> Maybe b) -> Maybe a -> Maybe b`
+
+
+`(a -> b) -> List a  -> List b`
+`(a -> b) -> Maybe a -> Maybe b`
+
+class Functor t where
+  fmap :: (a -> b) -> t a -> t b
+
+instance Functor [] where
+  fmap f [] = []
+  fmap f (x:xs) = f x : (fmap f xs)
+
+instance Functor [] where
+  fmap f Nothing = Nothing 
+  fmap f (Just x) = Just (f x)
+
+instance Functor IO where
+  fmap = iomap
+
+~~~~~{.haskell}
+
+
+
+
+
+
+
+
+
+
+~~~~~
+
+
 Generalizing `map`
 ------------------
 
@@ -77,7 +131,7 @@ map :: (a -> b) -> Maybe a -> Maybe b
 or 
 
 ~~~~~{.haskell}
-map :: (a -> b) -> Behavior a -> Behavior b
+map :: (a -> b) -> Tree a -> Tree b
 ~~~~~
 
 or 
@@ -86,8 +140,30 @@ or
 map :: (a -> b) -> IO a -> IO b
 ~~~~~
 
-**DO IN CLASS** 
-How would you write each of the above functions?
+
+Quiz
+----
+
+
+Which of the following is a valid 
+
+`iomap :: (a -> b) -> IO a -> IO b`
+
+~~~~~{.haskell}
+iomap f x = f x             -- a
+
+iomap f x = do f x          -- b
+
+iomap f x = do y <- f x     -- c
+               return y
+
+iomap f x = do y <- x       -- d
+               return (f y)
+
+iomap f x = do y <- x       -- e
+               f y
+~~~~~
+
 
 For this reason, there is a *typeclass* called `Functor` that 
 corresponds to the type constructors that you can `map` over:
@@ -99,41 +175,88 @@ class Functor m where
 
 **Note: ** The `m` is the type constructor, e.g. `[]` or `IO` or `Maybe`
 
+We can make `[]` or `IO` or `Maybe` be **instances** of `Functor` by:
+
+~~~~~{.haskell}
+instance Functor [] where
+  fmap f []     = []
+  fmap f (x:xs) = f x : fmap f xs
+~~~~~
+
+and 
+
+~~~~~{.haskell}
+instance Functor Maybe where
+  fmap f Nothing = Nothing
+  fmap f (Just)  = Just (f x)
+~~~~~
+
+and
+
+~~~~~{.haskell}
+instance Functor IO where
+  fmap = iomap
+~~~~~
+
+
+
+
 Generalizing `map` to Many Arguments
 ------------------------------------
 
+We can generalize `map` to many arguments.
 
-As we saw earlier, `lift1` and `lift2` and `lift3` etc. are all
-generalizations of `map` to multiple arguments. For example:
+With *one* argument, we call it `lift1`
 
 ~~~~~{.haskell}
 lift1           :: (a -> b) -> [a] -> [b]
 lift1 f []      = []
 lift1 f (x:xs)  = f x : lift1 f xs
-
-lift2 :: (a1 -> a2 -> b) -> [a1] -> [a2] -> [b]
-
-lift3 :: (a1 -> a2 -> a3 -> b) -> [a1] -> [a2] -> [a3] -> [b]
 ~~~~~
 
-**DO IN CLASS**  Implement the above!
+You can imagine defining a version for *two* arguments
+
+~~~~~{.haskell}
+lift2 :: (a1 -> a2 -> b) -> [a1] -> [a2] -> [b]
+lift2 f (x:xs) (y:ys) = f x y : lift2 f xs ys
+lift2 f _      _      = []
+~~~~~
+
+and *three* arguments and so on
+
+~~~~~{.haskell}
+lift3 :: (a1 -> a2 -> a3 -> b) -> [a1] -> [a2] -> [a3] -> [b]
+~~~~~
 
 or
 
 ~~~~~{.haskell}
 lift2 :: (a1 -> a2 -> b) 
-     -> Beh a1 
-     -> Beh a2 
-     -> Beh a3
+     -> Maybe a1 
+     -> Maybe a2 
+     -> Maybe a3
 
 lift3 :: (a1 -> a2 -> a3 -> b) 
-      -> Beh a1 
-      -> Beh a2 
-      -> Beh a3 
-      -> Beh b
+      -> Maybe a1 
+      -> Maybe a2 
+      -> Maybe a3 
+      -> Maybe b
 ~~~~~
 
-(These are just `lift2` and `lift3` from the Animation lecture.)
+or
+
+~~~~~{.haskell}
+lift2 :: (a1 -> a2 -> b) 
+     -> IO a1 
+     -> IO a2 
+     -> IO a3
+
+lift3 :: (a1 -> a2 -> a3 -> b) 
+      -> IO a1 
+      -> IO a2 
+      -> IO a3 
+      -> IO b
+~~~~~
 
 For this reason, there is a *typeclass* called `Applicative` that 
 corresponds to the type constructors that you can `lift2` or `lift3` 
@@ -165,34 +288,19 @@ liftA3 :: Applicative t
 A Simple Evaluator
 ==================
 
-
 Consider the following simple language of expressions that are
 built up from integer values using a division operator:
 
 > data Expr1 = Val1 Int 
 >            | Div1 Expr1 Expr1 
->            | ITE Expr1 Expr1 Expr1
 >              deriving (Show)
 
 
 Such expressions can be evaluated as follows:
 
-> eval1 ::  Expr1 -> Int
+> eval1            ::  Expr1 -> Int
 > eval1 (Val1 n)   =  n
 > eval1 (Div1 x y) =  eval1 x `div` eval1 y
-
-
-> eval1' ::  Expr1 -> Maybe Int
-> eval1' (Val1 n)   = Just n
-> eval1' (Div1 x y) = safeDiv (eval1' x) (eval1' y)
-
-
-> safeDiv _ (Just 0)        = Nothing
-> safeDiv (Just n) (Just m) = Just (n `div` m)
-> safeDiv _        _        = Nothing
-
-safeD n 0 = Nothing
-safeD n m = Just $ n `div` m
 
 
 
@@ -214,41 +322,13 @@ to define a *safe* version of division
 and then modify our evaluator as follows:
 
 ~~~~~{.haskell}
-eval           :: Expr -> Maybe Int
-eval (Val n)   =  Just n
-eval (Div x y) =  do n <- eval x
-                     m <- eval y
-                     safediv n m
-
-
-
-                  e1 >>= \x1 ->
-                  e2 >>= \x2 ->
-                  e3 >>= \x3 ->
-                  foo x1 x2 x3
-
-
-                 do x1 <- e1
-                    x2 <- e2
-                    x3 <- e3
-                    foo x1 x2 x3
-                    
-
-
-
-
-
-
-
-eval (ITE x y z) = case eval x of
-                     Nothing -> Nothing
-                     Just 0  -> case eval z of
-                                  Nothing -> Nothing
-                                  Just m  -> Just m
-                     Just _  -> case eval y of
-                                  Nothing -> Nothing
-                                  Just m  -> Just m
-
+eval1' ::  Expr1 -> Maybe Int
+eval1' (Val1 n)   =  Just n
+eval1' (Div1 x y) =  case eval1' x of 
+                       Nothing -> Nothing
+                       Just n1 -> case eval1' y of
+                                    Nothing -> Nothing
+                                    Just n2 -> n1 `safeDiv` n2
 ~~~~~
 
 As in the previous section, we can observe a common pattern, namely
@@ -272,18 +352,48 @@ observation, we could define a sequencing function
 using which our evaluator can now be defined more compactly:
 
 ~~~~~{.haskell}
+eval           :: Expr1 -> Maybe Int
 eval (Val n)   = Just n
-eval (Div x y) = map f (eval x `seqn` eval y)
+eval (Div x y) = apply f (eval x `seqn` eval y)
                    where f (n, m) = safediv n m
 ~~~~~
 
-The auxiliary function `map` is an analogue of `map` for `Maybe`,
-and is used to process the results of the two evaluations:
+Quiz
+----
+
+What must the type of `apply` be for the above to typecheck?
+
+a. `((Int, Int) -> Maybe Int) -> Maybe (Int, Int) -> Maybe Int`
+b. `(a -> Maybe b) -> Maybe a -> Maybe b` 
+c. `((Int, Int) -> Int) -> (Int, Int) -> Int` 
+d. `(a -> b) -> a -> b`
+e. `(a -> b) -> Maybe a -> Maybe b`
+
 
 ~~~~~{.haskell}
-map              :: (a -> b) -> Maybe a -> Maybe b
-map f Nothing  =  Nothing
-map f (Just x) =  Just (f x)
+
+
+
+
+
+
+
+
+
+
+~~~~~
+
+
+
+
+The auxiliary function `apply` is an analogue of application 
+for `Maybe`, and is used to process the results of the two 
+evaluations:
+
+~~~~~{.haskell}
+apply            :: (a -> Maybe b) -> Maybe a -> Maybe b
+apply f Nothing  = Nothing
+apply f (Just x) = f x
 ~~~~~
 
 In practice, however, using `seqn` can lead to programs that manipulate
@@ -298,27 +408,21 @@ eval (Op x y z) = map f (eval x `seqn` (eval y `seqn` eval z))
 Combining Sequencing and Processing
 -----------------------------------
 
-The problem of nested tuples can be avoided by returning of our 
-original observation of a common pattern: "performing a case analysis
-on a value of a `Maybe` type, mapping `Nothing` to itself, and `Just x` 
-to some result depending upon `x`".   Abstract this pattern directly gives
-a new sequencing operator that we write as `>>=`, and read as "then":
+The problem of nested tuples can be avoided by returning to our 
+original observation of a common pattern: 
+
+    "performing a case analysis on a value of a `Maybe` type, 
+     mapping `Nothing` to itself, and 
+     `Just x`to some result depending upon `x`".  
+ 
+Abstract this pattern directly gives a new *sequencing* operator
+that we write as `>>=`, and read as "then":
 
 ~~~~~{.haskell}
 (>>=)   :: Maybe a -> (a -> Maybe b) -> Maybe b
 m >>= f =  case m of
              Nothing -> Nothing
              Just x  -> f x
-
-class (Monad t) where
-  (>>=)  :: t a -> (a -> t b) -> t b
-  return :: a -> t a
- 
-instance Monad Maybe where
-  Nothing >>= f = Nothing
-  Just x  >>= f = f x
-
-  return x      = Just x
 ~~~~~
 
 Replacing the use of case analysis by pattern matching gives a
@@ -348,8 +452,10 @@ Using `>>=`, our evaluator can now be rewritten as:
 ~~~~~{.haskell}
 eval (Val n)   = Just n
 eval (Div x y) = eval x >>= (\n ->
-                 eval y >>= (\m ->
-                 safediv n m))
+                   eval y >>= (\m ->
+                     safediv n m
+                   )
+                 )
 ~~~~~
 
 The case for division can be read as follows: evaluate `x` and call
@@ -363,10 +469,10 @@ the `>>=` operator has the following structure:
 
 ~~~~~{.haskell}
 m1 >>= \x1 ->
-m2 >>= \x2 ->
-...
-mn >>= \xn ->
-f x1 x2 ... xn
+  m2 >>= \x2 ->
+  ...
+    mn >>= \xn ->
+      f x1 x2 ... xn
 ~~~~~
 
 That is, evaluate each of the expression `m1`, `m2`,...,`mn` in turn, 
@@ -374,6 +480,7 @@ and combine their result values `x1`, `x2`,..., `xn` by applying the
 function f. The definition of `>>=` ensures that such an expression
 only succeeds (returns a value built using `Just`) if each `mi` in 
 the sequence succeeds.
+
 In other words, the programmer does not have to worry about dealing
 with the possible failure (returning `Nothing`) of any of the component
 expressions, as this is handled automatically by the `>>=` operator. 
@@ -413,12 +520,13 @@ Monads in Haskell
 The `do` notation for sequencing is not specific to the `Maybe` type,
 but can be used with any type that forms a *monad*.  The general
 concept comes from a branch of mathematics called category theory.
+
 In Haskell, however, a monad is simply a parameterised type `m`,
 together with two functions of the following types:
 
 ~~~~~{.haskell}
-return :: a -> m a
 (>>=)  :: m a -> (a -> m b) -> m b
+return :: a -> m a
 ~~~~~
 
 (*Aside*: the two functions are also required to satisfy some simple
@@ -476,17 +584,6 @@ instance Monad Maybe where
    -- (>>=)       :: Maybe a -> (a -> Maybe b) -> Maybe b
    Nothing  >>= _ =  Nothing
    (Just x) >>= f =  f x
-
-instance Monad [] where
-
-   -- return      :: a -> [a]
-   return x       = [x]
-
-   -- (>>=)       :: [a] -> (a -> [b]) -> [b]
-   xs >>= f       = concat (map f xs)
-
-
-
 ~~~~~
 
 
@@ -512,6 +609,100 @@ results in the case of success.  More precisely, a value of
 `[a]` is either the empty list `[]`, which we can think of as
 failure, or has the form of a non-empty list `[x1,x2,...,xn]`
 for some `xi` of type `a`, which we can think of as success.
+
+Quiz
+----
+
+Lets make lists an instance of `Monad` by:
+
+~~~~~{.haskell}
+class Monad m where 
+  return :: a -> m a
+  (>>=)  :: m a -> (a -> m b) -> m b
+
+instance Monad [] where 
+  return = returnForList
+  (>>=)  = bindForList
+~~~~~
+
+What must the type of `returnForList` be ?
+
+a. `[a]`
+b. `a -> a`
+c. `a -> [a]`
+d. `[a] -> a`
+e. `[a] -> [a]`
+
+
+
+Quiz
+----
+
+Lets make lists an instance of `Monad` by:
+
+~~~~~{.haskell}
+class Monad m where 
+  return :: a -> m a
+  (>>=)  :: m a -> (a -> m b) -> m b
+
+instance Monad [] where 
+  return = returnForList
+  (>>=)  = bindForList
+~~~~~
+
+
+What must the type of `bindForList` be?
+
+a. `[a] -> [b] -> [b]` 
+b. `[a] -> (a -> b) -> [b]`
+c. `[a] -> (a -> [b]) -> b`
+d. `[a] -> (a -> [b]) -> [b]`
+e. `[a] -> [b]`
+
+~~~~~{.haskell}
+
+
+
+
+
+
+
+
+
+
+~~~~~
+
+
+Quiz
+----
+
+Which of the following is a valid 
+
+`bindForList :: [a] -> (a -> [b]) -> [b]`? 
+
+~~~~~{.haskell}
+-- a
+bfl f []     = []
+bfl f (x:xs) = f x : bfl f xs
+
+-- b
+bfl f []     = []
+bfl f (x:xs) = f x ++ bfl f xs
+
+-- c
+bfl []     f = []
+bfl (x:xs) f = f x ++ bfl f xs
+
+-- d
+bfl []     f = []
+bfl (x:xs) f = f x : bfl f xs
+
+-- e
+bfl []     f = []
+bfl (x:xs) f = x : f xs
+~~~~~
+
+
 Making lists into a monadic type is straightforward:
 
 ~~~~~{.haskell}
@@ -522,26 +713,6 @@ instance Monad [] where
    -- (>>=)  :: [a] -> (a -> [b]) -> [b]
    xs >>= f  =  concat (map f xs)
 ~~~~~
-
-> baz :: [a] -> [b] -> [(a,b)]
-> baz xs ys = do x <- xs
->                y <- ys
->                return (x, y)
-
-
-
-
-
-  def baz(xs, ys) = for ( x <- xs
-                        ; y <- ys)
-                    yield (x, y)
-
-  baz(List("c", "a", "t"), List("b", "u", "t"))
-
-
- zoo = baz "cat" "but"
-            ('c', 'b'), ('a', 'u'), ('t', 't')
-
 
 (*Aside*: in this context, `[]` denotes the list type `[a]` without
 its parameter.)  That is, return simply converts a value into a
@@ -555,10 +726,13 @@ As a simple example of the use of the list monad, a function
 that returns all possible ways of pairing elements from two 
 lists can be defined using the do notation as follows:
 
- pairs :: [a] -> [b] -> [(a,b)]
- pairs xs ys =  do x <- xs
-                   y <- ys
-                   return (x, y)
+~~~~~{.haskell}
+pairs :: [a] -> [b] -> [(a,b)]
+pairs xs ys =  do x <- xs
+                  y <- ys
+                  return (x, y)
+~~~~~
+
 
 That is, consider each possible value `x` from the list `xs`, and 
 each value `y` from the list `ys`, and return the pair `(x,y)`. It
@@ -566,7 +740,7 @@ is interesting to note the similarity to how this function
 would be defined using the list comprehension notation:
 
 ~~~~~{.haskell}
-pairs xs ys = [(x,y) | x <- xs, y <- ys]
+pairs xs ys = [(x, y) | x <- xs, y <- ys]
 ~~~~~
 
 or in Python syntax:

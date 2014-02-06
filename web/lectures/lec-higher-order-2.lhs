@@ -206,6 +206,10 @@ box of the structure. So, we will turn that base datatype into a
 >             | OneAndMore a (List a) 
 >             deriving (Show)
 
+  Empty      :: List a
+  OneAndMore :: a -> List a -> List a
+
+
 Now, as before, we may define each of the types as simply *instances* 
 of the above parameterized type
 
@@ -342,9 +346,31 @@ ghci> height st3
 How do we compute the *number* of leaf elements in the tree?
 
 ~~~~~{.haskell}
-size :: Tree a -> Int
+ht (Leaf _)     = 0
+ht (Node l r)   = 1 + max (ht l) (ht r)
+
+size            :: Tree a -> Int
 size (Leaf _)   = 1
 size (Node l r) = (size l) + (size l)
+
+foo :: (a -> b) -> (b -> b-> b) -> Tree a -> b 
+foo b op (Leaf x)   = b x
+foo b op (Node l r) = (foo b op l) `op` (foo b op r)
+
+
+bar               :: (b -> b-> b) -> Tree b -> b 
+bar op (Leaf x)   = x
+bar op (Node l r) = (bar op l) `op` (bar op r)
+
+
+ht   = foo (\_ -> 0)    (\xl xr -> 1 + max xl xr)
+sz   = foo (\_ -> 1)    (+)
+elts = foo (\x -> [x])  (++) 
+
+
+elts :: Tree a -> [a]
+elts = foo [] (:) 
+elts = foo [] (++)
 ~~~~~
 
 
@@ -367,17 +393,35 @@ routine as
 
 ~~~~~{.haskell}
 treeFold op b (Leaf x)   = b
-treeFold op b (Node l r) = (treeFold op b l) 
-			   `op` 
-			   (treeFold op b r)
+treeFold op b (Node l r) = (treeFold op b l) `op` (treeFold op b r)
 ~~~~~
 
 Does that work? Well, we can easily check that 
 
-~~~~~{.haskell}
-size   = treeFold (+) 1
-height = treeFold max 0
-~~~~~
+Quiz
+----
+
+What does `treeFold (+) 1 t` return?
+
+a. `0`
+b. the *largest*  element in the tree
+c. the *height*   of the tree
+d. the *number-of-leaves* of the tree
+e. type *error*
+
+
+Quiz
+----
+
+What does `treeFold max 0 t` return?
+
+a. `0`
+b. the *largest*  element in the tree
+c. the *height*   of the tree
+d. the *number-of-leaves* of the tree
+e. type *error*
+
+
 
 But what about `toList` ? Urgh. Does. Not. Work. We painted ourselves into
 a corner. For `size` and `height` the base value is a constant, but for `toList` 
@@ -392,18 +436,30 @@ returns as output the result of folding over the leaf.
 >                            `op` 
 >                            (treeFold op b r)
 
-Now we can write the first `height` and `size` as
+Now we can write the `size` as
 
-> height = treeFold max (const 0)
 > size   = treeFold (+) (const 1)
+
+How would you write `height` ?
+
+> height = treeFold undefined undefined
 
 where `const 0` and `const 1` are the respective base functions that
 ignore the leaf value and just always return `0` and `1` respectively.
+
 Can you guess the definition of `const` ?
 
-What about the problematic `toList` ? Easy enough
+Quiz
+----
 
-> toList = treeFold (++) (\x -> [x]) 
+Which of the following implements `toList :: Tree a -> [a]`
+
+a. `toList = treeFold (:)  []`
+b. `toList = treeFold (++) []`
+c. `toList = treeFold (:)  (\x -> [x])`
+d. `toList = treeFold (++) (\x -> [x])`
+e. none of the above.
+
 
 What about the equivalent of `map` for `Tree`s ? We could write
 the recursive definition
