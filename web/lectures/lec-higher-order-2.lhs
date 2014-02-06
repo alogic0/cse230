@@ -38,6 +38,31 @@ from [lecture 1](lec1.html).
 > data Shape  = Rectangle Double Double 
 >             | Polygon [(Double, Double)]
 
+Quiz
+----
+
+What is the type of `Rectangle` ?
+
+a. `Shape`
+b. `Double`
+c. `Double -> Double -> Shape`
+d. `(Double, Double) -> Shape`
+e. `[(Double, Double)] -> Shape`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Values of this type are either two doubles *tagged* with `Rectangle` 
 
 ~~~~~{.haskell}
@@ -231,17 +256,6 @@ and *2-3* trees
 >               | Node3 (Tree23 a) (Tree23 a) (Tree23 a)
 >               deriving (Show)
 
-Of course, there is no reason to limit ourselves to a single type
-parameter! We might define a type 
-
-~~~~~{.haskell}
-data Map k v = Emp 
-	     | Bnd k v (Map k v) (Map k v)
-             deriving (Show)
-~~~~~
-
-What do you think such a type would be useful for?
-
 Kinds
 -----
 
@@ -265,6 +279,25 @@ Thus, `List` is a function from any "type" to any other "type, and so
 ghci> :kind List
 List :: * -> *
 ~~~~~
+
+
+Quiz
+----
+
+What is the *kind* of `->`? That, is what does GHCi say if we type
+
+~~~~~{.haskell}
+ghci> :kind (->) 
+~~~~~
+
+a. `*`
+b. `* -> *`
+c. `* -> * -> *`
+
+
+
+
+
 
 We will not dwell too much on this now. As you might imagine, they allow 
 for all sorts of abstractions over how to construct data.
