@@ -74,10 +74,6 @@ What is the type of `foo` defined as:
 foo f z = case z of 
             Just x  -> Just (f x)
             Nothing -> Nothing 
-
-map f []  = [] 
-map f [x] = [f x]
-
 ~~~~~
 
 a. `Maybe a`
@@ -711,7 +707,8 @@ instance Monad [] where
    return x  =  [x]
 
    -- (>>=)  :: [a] -> (a -> [b]) -> [b]
-   xs >>= f  =  concat (map f xs)
+   [] >>=     f = []
+   (x:xs) >>= f = f x ++ (xs >>= f)
 ~~~~~
 
 (*Aside*: in this context, `[]` denotes the list type `[a]` without
@@ -722,36 +719,16 @@ results: `xs >>= f` applies the function f to each of the results
 in the list xs to give a nested list of results, which is then
 concatenated to give a single list of results.
 
-Quiz
-----
-
-Consider the function:
+As a simple example of the use of the list monad, a function
+that returns all possible ways of pairing elements from two 
+lists can be defined using the do notation as follows:
 
 ~~~~~{.haskell}
-zoink xs ys =  do x <- xs
+pairs :: [a] -> [b] -> [(a,b)]
+pairs xs ys =  do x <- xs
                   y <- ys
                   return (x, y)
 ~~~~~
-
-What does `zoink ['a', 'b'] [1,2]` evaluate to?
-
-a. `[('a', 1), ('b', 2)]`
-b. `[('a',  2), ('b', 1)]`
-c. `[('a', 1), ('a', 2), ('b', 1), ('b', 2)]`
-d. `[('b', 1), ('b', 2), ('a', 1), ('a', 2)]`
-e. `[('a', 1), ('b', 1), ('a', 2), ('b', 2)]`
-
-~~~~~{.haskell}
-
-
-
-
-~~~~~
-
-As a simple example of the use of the list monad, the 
-function `zoink` above returns all possible ways of 
-pairing elements from two lists can be defined using 
-the do notation.
 
 
 That is, consider each possible value `x` from the list `xs`, and 
@@ -794,19 +771,6 @@ ghci> canonize vals0
 [0, 1, 0, 0, 2]
 ~~~~~
 
-similarly, I want:
-
-~~~~~{.haskell}
-ghci> canonize ["zebra", "mouse", "zebra", "zebra", "owl"] 
-[0, 1, 0, 0, 2]
-~~~~~
-
-**DO IN CLASS** 
-How would you write `canonize` in Python?
-
-In Python, we could write such a function as:
-
-~~~~~{.python}
 def canon(xs):
   n = 0
   d = {}
@@ -818,12 +782,12 @@ def canon(xs):
       n   += 1
 
   return [d[y] for y in xs]
-~~~~~
 
-**DO IN CLASS** 
-How would you write `canonize` in Haskell? 
 
-~~~~~{.haskell}
+
+
+
+
 canon xs = [d ! x | x <- xs] 
   where 
     (_, d) = go (0, empty) xs
@@ -831,7 +795,33 @@ canon xs = [d ! x | x <- xs]
       | x `mem` d    = go (n  , d) xs
       | otherwise    = go (n+1, add x n d) xs
     go (n, d) []     = (n, d)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+similarly, I want:
+
+~~~~~{.haskell}
+ghci> canonize ["zebra", "mouse", "zebra", "zebra", "owl"] 
+[0, 1, 0, 0, 2]
 ~~~~~
+
+**DO IN CLASS** 
+How would you write `canonize` in Python?
+
+**DO IN CLASS** 
+How would you write `canonize` in Haskell? 
 
 Now, lets look at another problem. Consider the following tree datatype.
 
@@ -847,57 +837,23 @@ Lets write a function
 leafLabel :: Tree a -> Tree (a, Int)
 ~~~~~
 
-that assigns each leaf a distinct integer value, so that
+that assigns each leaf a distinct integer value, so we get the following
+behavior
 
 ~~~~~{.haskell}
 ghci> leafLabel (Node (Node (Leaf 'a') (Leaf 'b')) (Leaf 'c'))
-
-(Node (Node (Leaf ('a', 0)) (Leaf ('b', 1))) (Leaf ('c', 2)))
+                (Node (Node (Leaf ('a', 0)) (Leaf ('b', 1))) (Leaf ('c', 2)))
 ~~~~~
 
-Quiz
-----
+**DO IN CLASS** 
+How would you write `leafLabel` in Haskell? 
 
-Lets write `leafLabel` in Haskell!
-
-> leafLabel   :: Tree a -> Tree (a, Int)
-> leafLabel t = t' 
->   where
->     (_, t') = helper 0 t
-
-What must the type of `helper` be?
-
-a. `Int -> Tree a -> Int`
-b. `Int -> Tree a -> Tree a`
-c. `Int -> Tree a -> (Int, Tree a)`
-d. `Int -> Tree a -> (Int, Tree (a, Int))`
-e. `Int -> Tree (a, Int) -> (Int, Tree (a, Int))`
-
-~~~~~{.Haskell}
-
-
-
-
-~~~~~
-
-Indeed, the hard work is in the recursive function:
-
-> helper n (Leaf x)   = (n+1, Leaf (x, n))
-> helper n (Node l r) = (n'', Node l' r' )
->   where 
->     (n', l')        = helper n  l
->     (n'', r')       = helper n' r
-
-Wow. Thats pretty complex. We have to track the counter `n`
-and keep threading it through the computation. 
-
-Sometimes, you just want to increment a global variable...
 
 The State Monad
 ===============
 
 Now let us consider the problem of writing functions that
-manipulate some kind of **state**, represented by a type whose
+manipulate some kind of state, represented by a type whose
 internal details are not important for the moment:
 
 ~~~~~{.haskell}
@@ -921,17 +877,16 @@ state transformers to also return a result value, with the
 type of such values being a parameter of the `ST` type:
 
 ~~~~~{.haskell}
-data ST a = S (State -> (a, State))
+type ST a = State -> (a, State)
 
 instance Monad ST where
   -- return :: a -> ST a
   return x  = S (\st -> (x, st)) 
 
-  -- >>=  :: ST a -> (a -> ST b) -> ST b
-  (S tx1) >>= bar = S $ \st -> let (v, st') = tx1 st in 
-                                   S tx2    = bar v 
-                               in tx2 st'
-
+  -- >>=    :: ST a -> (a -> ST b) -> ST b
+  tx1 >>= f = \st -> let (v, st') = tx1 st in 
+                         tx2    = f v 
+                     in tx2 st'
 ~~~~~
 
 
@@ -1012,63 +967,83 @@ We conclude this section with a technical aside.  In Haskell,
 types defined using the `type` mechanism cannot be made into
 instances of classes.  Hence, in order to make ST into an
 instance of the class of monadic types, in reality it needs
-to be redefined using the "data" mechanism, which requires
+to be redefined using the `data` mechanism, which requires
 introducing a dummy constructor (called `S` for brevity):
 
 > data ST0 a = S0 (State -> (a, State))
 
-
-
-
-
-
 It is convenient to define our own application function for
 this type, which simply removes the dummy constructor:
 
-> apply0        :: ST0 a -> State -> (a, State)
+> apply0          :: ST0 a -> State -> (a, State)
 > apply0 (S0 f) x = f x
 
 In turn, ST is now defined as a monadic type as follows:
 
 > instance Monad ST0 where
 >   -- return :: a -> ST a
->   return x   = S0 (\s -> (x,s))
+>   return x   = S0 (\s -> (x, s))
 >
 >   -- (>>=)  :: ST a -> (a -> ST b) -> ST b
->   st >>= f   = S0 (\s -> let (x, s') = apply0 st s in apply0 (f x) s')
+>   st >>= f   = S0 $ \s -> let (x, s') = apply0 st s in 
+>                           apply0 (f x) s'
 
-(*Aside*: the runtime overhead of manipulating the dummy constructor
+(**Aside**: the runtime overhead of manipulating the dummy constructor
 S can be eliminated by defining ST using the `newtype` mechanism
 of Haskell, rather than the `data` mechanism.)
 
 A simple example
 ----------------
 
-Intuitively, a value of type `ST a` (or `ST0 a`) is simply an
-*action* that returns an `a` value. The sequencing combinators
-allow us to combine simple actions to get bigger actions, and 
-the `apply0` allows us to *execute* an action from some initial 
-state.
+Intuitively, a value of type `ST a` (or `ST0 a`) is simply an *action* that
+returns an `a` value. The sequencing combinators allow us to combine simple
+actions to get bigger actions, and the `apply0` allows us to *execute* an
+action from some initial state.
 
-To get warmed up with the state-transformer monad, consider 
-the simple *sequencing* combinator
+Quiz
+----
+
+To get warmed up with the state-transformer monad, lets write a simple
+*sequencing* combinator
 
 ~~~~~{.haskell}
 (>>) :: Monad m => m a -> m b -> m b
 ~~~~~
 
-in a nutshell, `a1 >> a2` takes the actions `a1` and `a2` and
-returns the *mega* action which is `a1`-then-`a2`-returning-the-value-returned-by-`a2`.
+which, in a nutshell, `a1 >> a2` takes the actions `a1` and `a2` and returns the
+*mega* action which is `a1`-then-`a2`-returning-the-value-returned-by-`a2`.
 
-In other words, the function can be defined using the notion 
-of a state transformer, in which the internal state is simply
-the next fresh integer
+Which is a valid implementation of `>>` ?
+
+~~~~~{.haskell}
+-- a
+a1 >> a2 = a1 >>= (\x -> a2 x)
+
+-- b
+a1 >> a2 = (a1, a2)
+
+-- c
+a1 >> a2 = a1 >>= (\_ -> a2)
+
+-- d
+a1 >> a2 = a1 >>= (\_ -> return a2)
+
+-- e
+a1 >> a2 = (a1, return a2)
+~~~~~
+
+A Global Counter
+----------------
+
+Next, lets see how to implement a **"global counter"** in Haskell, 
+by using a state transformer, in which the internal state is simply 
+the *next* integer
 
 > type State = Int
 
-In order to generate a fresh integer, we define a special
-state transformer that simply returns the current state as
-its result, and the next integer as the new state:
+In order to generate the *next* integer, we define a 
+special state transformer that simply returns the current 
+state as its result, and the *next* integer as the new state:
 
 > fresh :: ST0 Int
 > fresh =  S0 (\n -> (n, n+1))
@@ -1080,21 +1055,34 @@ return integer values.
 Quiz
 ----
 
-Consider `wtf1` defined as:
+Recall that:
+
+~~~~~{.haskell}
+fresh           :: ST0 Int
+fresh           =  S0 (\n -> (n, n+1))
+
+apply0          :: ST0 a -> State -> (a, State)
+apply0 (S0 f) x = f x
+~~~~~
+
+Consider the function `wtf1` defined as:
 
 > wtf1 = fresh >> fresh >> fresh >> fresh
 
-What does the following evaluate to?
+What does this return?
 
 ~~~~~{.haskell}
 ghci> apply0 wtf1 0
 ~~~~~
 
-a. Type Error
-b. `0`
-c. `3`
+a. `(3, 4)`
+b. `(0, 4)`
+c. `(3, 3)`
 d. `(4, 4)`
-e. `(3, 4)`
+e. `4`
+
+
+
 
 ~~~~~{.haskell}
 
@@ -1102,34 +1090,63 @@ e. `(3, 4)`
 
 
 
+
 ~~~~~
 
-Indeed, we are just chaining together four `fresh` 
-actions to get a single action that "bumps up" the
-counter by `4`.
 
-Now, the `>>=` sequencer is kind of like `>>` only 
-it allows you to *remember* intermediate values that 
-may have been returned. Similarly, 
+
+
+Indeed, we are just chaining together four `fresh` actions to get a single
+action that "bumps up" the counter by `4`. That is, the following are
+equivalent:
+
+~~~~~{.haskell}
+wtf1 = fresh >> fresh >> fresh >> fresh 
+
+wtf1 = fresh >>= \_ ->
+         fresh >>= \_ ->  
+           fresh >>= \_ ->
+             fresh  
+
+wtf1 = do fresh
+          fresh
+          fresh
+          fresh
+~~~~~
+
+
+Now, the `>>=` sequencer is kind of like `>>` only it allows you to
+"remember" intermediate values that may have been returned. Similarly, 
 
 ~~~~~{.haskell}
 return :: a -> ST0 a
 ~~~~~
 
-takes a value `x` and yields an *action* that doesnt
-actually transform the state, but just returns the 
-same value `x`. 
+takes a value `x` and yields an *action* that doesnt actually transform the
+state, but just returns the same value `x`. So, putting things together,
+how do you think this behaves?
 
 Quiz
 ----
 
-Suppose we define `wtf2` as: 
+Recall:
+
+~~~~~{.haskell}
+fresh           :: ST0 Int
+fresh           =  S0 (\n -> (n, n+1))
+
+apply0          :: ST0 a -> State -> (a, State)
+apply0 (S0 f) x = f x
+
+return          :: a -> ST0 a
+return x        = S0 (\n -> (x, n))
+~~~~~
 
 > wtf2 = fresh >>= \n1 ->
->        fresh >>= \n2 ->  
->        fresh >>
->        fresh >>
->        return [n1, n2]
+>          fresh >>= \n2 ->  
+>            fresh >>
+>              fresh >>
+>                return [n1, n2]
 
 What does the following evaluate to?
 
@@ -1137,14 +1154,23 @@ What does the following evaluate to?
 ghci> apply0 wtf2 0
 ~~~~~
 
-a. `([0, 1], 4)`
-b. `[1, 2]`
-c. `([4, 4], 4)`
-d. `([3, 3], 4)`
-e. `[4, 4]`
+a. `4`
+b. `([3, 4], 4)`
+c. `([0, 1], 4)`
+d. `[0, 1]`
+e. `[3, 4]`
 
 
-Recall, the `do` business is just nice syntax for the above. Hence,
+~~~~~{.haskell}
+
+
+
+
+
+
+~~~~~
+
+Of course, the `do` business is just nice syntax for the above:
 
 > wtf3 = do n1 <- fresh
 >           n2 <- fresh
@@ -1159,7 +1185,8 @@ A More Interesting Example
 --------------------------
 
 By way of an example of using the state monad, let us define
-a type of binary trees whose leaves contains values of some type a:
+a type of binary trees whose leaves contains values of some 
+type `a`:
 
 > data Tree a = Leaf a 
 >             | Node (Tree a) (Tree a)
@@ -1170,15 +1197,34 @@ Here is a simple example:
 > tree :: Tree Char
 > tree =  Node (Node (Leaf 'a') (Leaf 'b')) (Leaf 'c')
 
-> tree' =  Node (Node (Leaf ('a', 0)) (Leaf ('b', 1))) (Leaf ('c', 2))
 
 Now consider the problem of defining a function that labels each 
-leaf in such a tree with a unique or **fresh** integer. 
-This can be achieved by taking the next fresh integer as an 
-additional argument to the function, and returning the 
-next fresh integer as an additional result.
+leaf in such a tree with a unique or "fresh" integer, for example,
+returning the following:
 
-In short, we can use
+> tree' =  Node (Node (Leaf ('a', 0)) (Leaf ('b', 1))) (Leaf ('c', 2))
+
+
+This can be achieved by taking the next fresh integer as an 
+additional argument to the function, and returning the next 
+fresh integer as an additional result, for instance, as shown
+below:
+
+> tagTree :: Tree a -> Tree (a, Int)
+> tagTree t = snd $ helper 0 t
+
+The hard work is done in the recursive `helper` that threads
+the *counter* through the recursive traversal:
+
+> helper n (Leaf x)   = (n+1, Leaf (x, n))
+> helper n (Node l r) = (n'', Node l' r' )
+>   where 
+>     (n', l')        = helper n  l
+>     (n'', r')       = helper n' r
+
+Yikes. Looks a bit gross!
+
+Instead, lets use the ST0 monad. In particular, lets use
 
 ~~~~~{.haskell}
 fresh :: ST0 Int
@@ -1186,8 +1232,9 @@ fresh :: ST0 Int
 
 to get distinct integer values, together with the `return` and `>>=` 
 primitives that are provided by virtue of `ST` being a monadic type.
-It is now straightforward to define a function that takes a tree as its
-argument, and returns a state transformer that produces the
+
+It is now straightforward to define a function that takes a tree
+as its argument, and returns a state transformer that produces the
 same tree with each leaf labelled by a fresh integer:
 
 > mlabel            :: Tree a -> ST0 (Tree (a,Int))
@@ -1205,12 +1252,10 @@ Finally, we can now define a function that labels a tree by
 simply applying the resulting state transformer with zero as
 the initial state, and then discarding the final state:
 
-> label       :: Tree a -> Tree (a, Int)
-> label t     = t' 
->   where 
->     (t', _) = apply0 (mlabel t) 0
+> label  :: Tree a -> Tree (a, Int)
+> label t = fst (apply0 (mlabel t) 0)
 
-For example, `mlabel tree` gives the following result:
+For example, `label tree` gives the following result:
 
 ~~~~~{.haskell}
 ghci> label tree
@@ -1276,9 +1321,9 @@ where the function `apply` is just
 Accessing and Modifying State
 -----------------------------
 
-Since our notion of state is generic, it is useful to write a `get`
-and `put` function with which one can *access* and *modify* the state. 
-We can easily `get` the *current* state via 
+Since our notion of state is generic, it is useful to write a
+`get` and `put` function with which one can *access* and *modify* 
+the state. We can easily `get` the *current* state via 
 
 
 
@@ -1351,31 +1396,6 @@ ghci> apply (mlabelS tree) 1000
 (Node (Node (Leaf ('a',1000)) (Leaf ('b',1001))) (Leaf ('c',1002)),1003)
 ~~~~~
 
-> tree2 =  Node (Node (Leaf 'a') (Leaf 'b')) 
->               (Node (Leaf 'a') (Leaf 'c'))
-
-
-> data Something a = RECORD { count :: Int, freqq :: Map a Int }
->                    deriving (Show)
-
-
-> fresh' = do st <- get
->             let n = count st
->             put $ st { count = n + 1 }
->             return n
-
-> updFreq c = do st   <- get
->                let n = findWithDefault 0 c (freqq st)
->                put $ st { freqq = insert c (n+1) (freqq st) }
->                return ()
-
-> mlabel' (Leaf x)   =  do n <- fresh'
->                          updFreq x
->                          return (Leaf (x, n))
->
-> mlabel' (Node l r) =  do l' <- mlabel' l
->                          r' <- mlabel' r
->                          return (Node l' r')
 
 
 Now, whats the point of a generic state transformer if we can't have richer
@@ -1401,8 +1421,7 @@ We write an *action* that returns the next fresh integer as
 >   put $ s { index = n + 1 }  
 >   return n 
 
-Similarly, we want an action that updates the frequency of
-a given element `k`
+Similarly, we want an action that updates the frequency of a given element `k`
 
 > updFreqM k = do 
 >   s    <- get               
@@ -1426,16 +1445,23 @@ Now, our *initial* state will be something like
 
 and so we can label the tree
 
-~~~~~{.haskell}
-ghci> let tree2   = Node tree tree 
-ghci> let (lt, s) = apply (mlabelM tree) $ M 0 empty 
+> tree2 =  Node (Node (Leaf 'a') (Leaf 'b')) 
+>               (Node (Leaf 'a') (Leaf 'c'))
 
-ghci> lt
-Node (Node (Node (Leaf ('a',0)) (Leaf ('b',1))) (Leaf ('c',2))) (Node (Node (Leaf ('a',3)) (Leaf ('b',4))) (Leaf ('c',5)))
+
+~~~~~{.haskell}
+ghci> let tree2       = Node tree tree 
+ghci> let (tree2', s) = apply (mlabelM tree) $ M 0 empty 
+
+ghci> tree2' 
+Node (Node (Leaf ('a', 0)) (Leaf ('b', 1))) 
+     (Node (Leaf ('a', 2)) (Leaf ('c', 3)))
 
 ghci> s
-M {index = 6, freq = fromList [('a',2),('b',2),('c',2)]}
+M {index = 4, freq = fromList [('a',2),('b',1),('c',1)]}
 ~~~~~
+
+In short, `ST` makes *global variables* really easy.
 
 The IO Monad
 ============
@@ -1485,7 +1511,6 @@ Haskell systems such as Hugs and GHC implement actions in a more
 efficient manner, but for the purposes of understanding the
 behaviour of actions, the above interpretation can be useful.
 
-
 Derived primitives
 ==================
 
@@ -1493,18 +1518,16 @@ An important benefit of abstracting out the notion of a monad into
 a single typeclass, is that it then becomes possible to define a 
 number of useful functions that work in an arbitrary monad.  
 
-Quiz
-----
+We've already seen this in the `pairs` function
 
-~~~~~{.haskell}
-pairs xs ys =  do x <- xs
-                  y <- ys
-                  return (x, y)
-~~~~~
-
-What is the type of `pairs`?
+> pairs xs ys = do
+>   x <- xs
+>   y <- ys
+>   return (x, y)
 
 
+What do you think the type of the above is ? (I left out an annotation
+deliberately!)
 
 ~~~~~{.haskell}
 ghci> :type pairs
@@ -1550,27 +1573,85 @@ ghci> pairs getChar getChar
 40('4','0')
 ~~~~~
 
+Quiz
+----
+
+What is the type of `foo` defined as:
+
+> foo f z = do x <- z 
+>              return (f x)
+
+a. `(a -> b)  -> Maybe a -> Maybe b` 
+b. `(a -> b)  -> IO a    -> IO b`
+c. `(a -> b)  -> [a]     -> [b]` 
+d. `(Monad m) => (a -> b) -> m a -> m b`
+e. Type Error 
+
+~~~~~{.haskell}
 
 
 
-A more useful application, is that `map` function on 
-lists can be generalised  as follows:
 
-> liftM     :: Monad m => (a -> b) -> m a -> m b
-> liftM f mx = do x <- mx
->                 return (f x)
 
-More generally, we can automatically convert **any** 
-monadic type into one that we can `fmap` over!
+~~~~~
+
+Whoa! This is actually very useful, because in **one-shot** we've defined
+a `map` function for **every** monad type!
+
+~~~~~{.haskell}
+ghci> foo (+1) [0,1,2]
+[1, 2, 3]
+
+ghci> foo (+1) (Just 10)
+Just 11
+
+ghci> foo (+1) Nothing
+Nothing
+~~~~~
+
+Indeed, we can make this explicit by telling Haskell that every `Monad` also 
+is a `Functor`:
 
 ~~~~~{.haskell}
 instance (Monad m) => (Functor m) where
-  fmap     :: (a -> b) -> m a -> m b
+  fmap :: (a -> b) -> m a -> m b
   fmap f z = do x <- z
                 return (f x)
-~~~~~~
+~~~~~
 
-The above lets us get the `map` operation on lists *for free*
+
+Quiz
+---- 
+
+Consider the function `baz` defined as:
+
+> baz mmx = do mx <- mmx
+>              x  <- mx
+>              return x
+
+What does `baz [[1, 2], [3, 4]]` return ?
+
+
+a. `[1, 3], [1, 4], [2, 3], [2, 4]]`
+b. `[1, 2, 3, 4]` 
+c. `[[1, 3], [2, 4]]` 
+d. `[]` 
+e. Type error
+
+This above notion of concatenation generalizes to any monad:
+
+> join    :: Monad m => m (m a) -> m a
+> join mmx = do mx <- mmx
+>               x  <- mx
+>               return x
+
+~~~~~{.haskell}
+
+
+
+
+
+~~~~~
 
 As a final example, we can define a function that transforms
 a list of monadic expressions into a single such expression that
@@ -1584,22 +1665,6 @@ sequence (mx:mxs) =  do x  <- mx
                         xs <- sequence mxs
                         return (x:xs)
 ~~~~~
-
-Quiz
-----
-
-> join    :: Monad m => m (m a) -> m a
-> join mmx = do mx <- mmx
->               x  <- mx
->               return x
-
-What does `join [[1], [2,3], [4,5,6]]` evaluate to?
-
-a. `[6]`
-b. `[4,5,6]`
-c. `[1,2,3,4,5,6]`
-d. `[[4,5,6]]`
-e. Type error!
 
 
 Monads As Programmable Semicolon
@@ -1686,6 +1751,13 @@ liftM (f . g)  =  liftM f . liftM g
 This equation generalises the familiar distribution property of
 map from lists to an arbitrary monad.  In order to verify this
 equation, we first rewrite the definition of `liftM` using `>>=`:
+That is, we change the definition:
+
+~~~~~{.haskell}
+liftM f mx  = do { x <- mx ; return (f x) }
+~~~~~
+
+into
 
 ~~~~~{.haskell}
 liftM f mx  =  mx >>= \x -> return (f x)
