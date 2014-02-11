@@ -880,17 +880,16 @@ state transformers to also return a result value, with the
 type of such values being a parameter of the `ST` type:
 
 ~~~~~{.haskell}
-data ST a = S (State -> (a, State))
+type ST a = State -> (a, State)
 
 instance Monad ST where
   -- return :: a -> ST a
   return x  = S (\st -> (x, st)) 
 
-  -- >>=  :: ST a -> (a -> ST b) -> ST b
-  (S tx1) >>= bar = S $ \st -> let (v, st') = tx1 st in 
-                                   S tx2    = bar v 
-                               in tx2 st'
-
+  -- >>=    :: ST a -> (a -> ST b) -> ST b
+  tx1 >>= f = \st -> let (v, st') = tx1 st in 
+                         tx2    = f v 
+                     in tx2 st'
 ~~~~~
 
 
@@ -971,32 +970,28 @@ We conclude this section with a technical aside.  In Haskell,
 types defined using the `type` mechanism cannot be made into
 instances of classes.  Hence, in order to make ST into an
 instance of the class of monadic types, in reality it needs
-to be redefined using the "data" mechanism, which requires
+to be redefined using the `data` mechanism, which requires
 introducing a dummy constructor (called `S` for brevity):
 
 > data ST0 a = S0 (State -> (a, State))
 
-
-
-
-
-
 It is convenient to define our own application function for
 this type, which simply removes the dummy constructor:
 
-> apply0        :: ST0 a -> State -> (a, State)
+> apply0          :: ST0 a -> State -> (a, State)
 > apply0 (S0 f) x = f x
 
 In turn, ST is now defined as a monadic type as follows:
 
 > instance Monad ST0 where
 >   -- return :: a -> ST a
->   return x   = S0 (\s -> (x,s))
+>   return x   = S0 (\s -> (x, s))
 >
 >   -- (>>=)  :: ST a -> (a -> ST b) -> ST b
->   st >>= f   = S0 (\s -> let (x, s') = apply0 st s in apply0 (f x) s')
+>   st >>= f   = S0 $ \s -> let (x, s') = apply0 st s in 
+>                           apply0 (f x) s'
 
-(*Aside*: the runtime overhead of manipulating the dummy constructor
+(**Aside**: the runtime overhead of manipulating the dummy constructor
 S can be eliminated by defining ST using the `newtype` mechanism
 of Haskell, rather than the `data` mechanism.)
 
@@ -1008,48 +1003,120 @@ returns an `a` value. The sequencing combinators allow us to combine simple
 actions to get bigger actions, and the `apply0` allows us to *execute* an
 action from some initial state.
 
-To get warmed up with the state-transformer monad, consider the simple
+Quiz
+----
+
+To get warmed up with the state-transformer monad, lets write a simple
 *sequencing* combinator
 
 ~~~~~{.haskell}
 (>>) :: Monad m => m a -> m b -> m b
 ~~~~~
 
-in a nutshell, `a1 >> a2` takes the actions `a1` and `a2` and returns the
+which, in a nutshell, `a1 >> a2` takes the actions `a1` and `a2` and returns the
 *mega* action which is `a1`-then-`a2`-returning-the-value-returned-by-`a2`.
 
+Which is a valid implementation of `>>` ?
 
-In other words, the function can be defined using the notion of a state 
-transformer, in which theinternal state is simply the next fresh integer
+~~~~~{.haskell}
+-- a
+a1 >> a2 = a1 >>= (\x -> a2 x)
+
+-- b
+a1 >> a2 = (a1, a2)
+
+-- c
+a1 >> a2 = a1 >>= (\_ -> a2)
+
+-- d
+a1 >> a2 = a1 >>= (\_ -> return a2)
+
+-- e
+a1 >> a2 = (a1, return a2)
+~~~~~
+
+A Global Counter
+----------------
+
+Next, lets see how to implement a **"global counter"** in Haskell, 
+by using a state transformer, in which the internal state is simply 
+the *next* integer
 
 > type State = Int
 
-In order to generate a fresh integer, we define a special
-state transformer that simply returns the current state as
-its result, and the next integer as the new state:
+In order to generate the *next* integer, we define a 
+special state transformer that simply returns the current 
+state as its result, and the *next* integer as the new state:
 
 > fresh :: ST0 Int
 > fresh =  S0 (\n -> (n, n+1))
 
-
 Note that `fresh` is a *state transformer* (where the state 
 is itself just `Int`), that is an *action* that happens to 
-return integer values. What do you think the following does:
+return integer values. 
 
-> wtf1 = fresh >> 
->        fresh >> 
->        fresh >> 
->        fresh
+Quiz
+----
 
-**DO IN CLASS** 
-What do you think this would return:
+Recall that:
+
+~~~~~{.haskell}
+fresh           :: ST0 Int
+fresh           =  S0 (\n -> (n, n+1))
+
+apply0          :: ST0 a -> State -> (a, State)
+apply0 (S0 f) x = f x
+~~~~~
+
+Consider the function `wtf1` defined as:
+
+> wtf1 = fresh >> fresh >> fresh >> fresh
+
+What does this return?
 
 ~~~~~{.haskell}
 ghci> apply0 wtf1 0
 ~~~~~
 
+a. `(3, 4)`
+b. `(0, 4)`
+c. `(3, 3)`
+d. `(4, 4)`
+e. `4`
+
+
+
+
+~~~~~{.haskell}
+
+
+
+
+
+
+~~~~~
+
+
+
+
 Indeed, we are just chaining together four `fresh` actions to get a single
-action that "bumps up" the counter by `4`.
+action that "bumps up" the counter by `4`. That is, the following are
+equivalent:
+
+~~~~~{.haskell}
+wtf1 = fresh >> fresh >> fresh >> fresh 
+
+wtf1 = fresh >>= \_ ->
+         fresh >>= \_ ->  
+           fresh >>= \_ ->
+             fresh  
+
+wtf1 = do fresh
+          fresh
+          fresh
+          fresh
+~~~~~
+
 
 Now, the `>>=` sequencer is kind of like `>>` only it allows you to
 "remember" intermediate values that may have been returned. Similarly, 
@@ -1062,21 +1129,27 @@ takes a value `x` and yields an *action* that doesnt actually transform the
 state, but just returns the same value `x`. So, putting things together,
 how do you think this behaves?
 
-> wtf4 = fresh >>= \_ ->
->        fresh >>= \_ ->  
->        fresh >>= \_ ->
->        fresh  
+Quiz
+----
 
-  wtf4 = do fresh
-            fresh
-            fresh
-            fresh
+Recall:
+
+~~~~~{.haskell}
+fresh           :: ST0 Int
+fresh           =  S0 (\n -> (n, n+1))
+
+apply0          :: ST0 a -> State -> (a, State)
+apply0 (S0 f) x = f x
+
+return          :: a -> ST0 a
+return x        = S0 (\n -> (x, n))
+~~~~~
 
 > wtf2 = fresh >>= \n1 ->
->        fresh >>= \n2 ->  
->        fresh >>
->        fresh >>
->        return [n1, n2]
+>          fresh >>= \n2 ->  
+>            fresh >>
+>              fresh >>
+>                return [n1, n2]
 
 **DO IN CLASS** 
 What do you think this would return:
@@ -1084,6 +1157,12 @@ What do you think this would return:
 ~~~~~{.haskell}
 ghci> apply0 wtf2 0
 ~~~~~
+
+a. `([0, 1], 4)`
+b. `([3, 4], 4)`
+c. `[0, 1]`
+d. `[3, 4]`
+e. `4`
 
 Now, the `do` business is just nice syntax for the above:
 
@@ -1100,7 +1179,8 @@ A More Interesting Example
 --------------------------
 
 By way of an example of using the state monad, let us define
-a type of binary trees whose leaves contains values of some type a:
+a type of binary trees whose leaves contains values of some 
+type `a`:
 
 > data Tree a = Leaf a 
 >             | Node (Tree a) (Tree a)
@@ -1131,14 +1211,6 @@ Here is a simple example:
 >   = do l' <- tagTreeM l
 >        r' <- tagTreeM r
 >        return $ Node l' r'
-
-
-
-
-
-(helper n l) (helper (n + size l) r)
-
-
 
 
 Now consider the problem of defining a function that labels each 
