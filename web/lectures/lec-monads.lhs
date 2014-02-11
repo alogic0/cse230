@@ -74,10 +74,6 @@ What is the type of `foo` defined as:
 foo f z = case z of 
             Just x  -> Just (f x)
             Nothing -> Nothing 
-
-map f []  = [] 
-map f [x] = [f x]
-
 ~~~~~
 
 a. `Maybe a`
@@ -711,7 +707,8 @@ instance Monad [] where
    return x  =  [x]
 
    -- (>>=)  :: [a] -> (a -> [b]) -> [b]
-   xs >>= f  =  concat (map f xs)
+   [] >>=     f = []
+   (x:xs) >>= f = f x ++ (xs >>= f)
 ~~~~~
 
 (*Aside*: in this context, `[]` denotes the list type `[a]` without
@@ -974,11 +971,18 @@ instance of the class of monadic types, in reality it needs
 to be redefined using the "data" mechanism, which requires
 introducing a dummy constructor (called `S` for brevity):
 
-> data ST0 a = S0 (State -> (a, State))
+> data STX a = S (State -> (a, State))
 
+instance Monad STX where
+  return   :: a -> STX a
+  return a = S (\st -> (a, st)) 
 
-
-
+  (>>=)          :: STX a -> (a -> STX b) -> STX b
+  (S foo) >>= f  = S (\st -> (b, st''))
+     where  
+       (a, st')  = foo st 
+       S actb    = f a
+       (b, st'') = actb st'
 
 
 It is convenient to define our own application function for
