@@ -2,6 +2,7 @@
 title: Monadic Parsing 
 ---
 
+> {-# LANGUAGE LambdaCase #-}
 > import Data.Char
 > import Data.Functor
 > import Control.Monad
@@ -21,11 +22,23 @@ an XML tree or JSON object, a program's Abstract Syntax Tree and so on.
 Parsing is one of the most basic computational tasks. *Every* serious 
 software system has a parser tucked away somewhere inside, for example
 
+            System    Parses
+    --------------    ------------------------------
+     Shell Scripts    Command-line options
+          Browsers    HTML
+             Games    Level descriptors
+           Routers    Packets
+
+
+<!--
+
 - Shell Scripts (command-line options)
 - Web Browsers (duh!)
 - Games (level descriptors)
 - Routers (packets)
 - etc
+
+-->
 
 (Indeed I defy you to find any serious system that *does not* do some
 parsing somewhere!)
@@ -113,25 +126,55 @@ The above is simply the parser (*cough* action) the actual parsing is done by
 
 > doParse (P p) s = p s
 
-
 Lets build some parsers!
 
 
 Parse A Single character
 -------------------------
 
-Here's a *very* simple character parser, that returns the first `Char` from
-a list if one exists
+QUIZ
+----
+
+Recall
+
+~~~~~{.haskell}
+newtype Parser a = P (String -> [(a, String)])
+~~~~~
+
+Which of the following is a valid single-character-parser that returns the 
+**first** `Char` from a string (if one exists.)
+
+~~~~~{.haskell}
+-- a
+oneChar = P $ \cs -> head cs
+
+-- b
+oneChar = P $ \case -> {[] -> [('', []) | c:cs -> (c, cs)}
+
+-- c
+oneChar = P $ \cs -> (head cs, tail cs)
+
+-- d
+oneChar = P $ \cs -> [(head cs, tail cs)]
+
+-- e
+oneChar = P $ \case -> { [] -> [] | cs -> [(head cs, tail cs)]}
+~~~~~
+
+~~~~~{.haskell}
+
+
+
+
+
+~~~~~
+
+Yes, we can!
 
 > oneChar :: Parser Char
 > oneChar = P (\cs -> case cs of
 >                c:cs' -> [(c, cs')]
 >                _     -> [])
-
-> twoChar0 = P (\cs -> case cs of
->                  c1:c2:cs' -> [((c1,c2), cs')]
->                  _         -> [])
-
 
 Lets run the parser
 
@@ -143,21 +186,7 @@ ghci> doParse oneChar ""
 []
 ~~~~~
 
-Parser Composition
-------------------
-
-We can write a combinator that takes two parsers and returns a 
-new parser that returns a pair of values
-
-~~~~~{.haskell}
-pairP ::  Parser a -> Parser b -> Parser (a,b)
-pairP p1 p2 = P (\cs -> 
-  [((x,y), cs'') | (x, cs' ) <- doParse p1 cs, 
-                   (y, cs'') <- doParse p2 cs']
-  )
-~~~~~
-
-Now we can write another parser that grabs a pair of `Char` values
+Now we can write another parser that grabs a **pair** of `Char` values
 
 ~~~~~{.haskell}
 twoChar :: Parser (Char, Char)
@@ -166,7 +195,67 @@ twoChar  = P (\cs -> case cs of
              _         -> [])
 ~~~~~
 
-or more elegantly as
+Lets run the parser
+
+~~~~~{.haskell}
+ghci> doParse twoChar "hey!"
+[(('h', 'e'), "y!")]
+
+ghci> doParse twoChar "h"
+[]
+~~~~~
+
+
+Parser Composition
+------------------
+
+QUIZ
+----
+
+Recall
+
+~~~~~{.haskell}
+twoChar :: Parser (Char, Char)
+twoChar  = P (\cs -> case cs of
+             c1:c2:cs' -> [((c1, c2), cs')]
+             _         -> [])
+~~~~~
+
+Suppose we had some `foo` such that behaved **identically** to `twoChar`.
+
+~~~~~{.haskell}
+twoChar' = foo oneChar oneChar 
+~~~~~
+
+What must the type of `foo` be?
+
+a. `Parser (Char, Char)` 
+b. `Parser Char -> Parser (Char, Char)`
+c. `Parser a -> Parser a -> Parser (a, a)` 
+d. `Parser a -> Parser b -> Parser (a, b)` 
+e. `Parser a -> Parser (a, a)` 
+
+~~~~~{.haskell}
+
+
+
+
+
+
+~~~~~
+
+Indeed, `foo` is a **parser combinator** that takes two parsers and returns a 
+new parser that returns a pair of values:
+
+~~~~~{.haskell}
+pairP ::  Parser a -> Parser b -> Parser (a, b)
+pairP p1 p2 = P (\cs -> 
+  [((x,y), cs'') | (x, cs' ) <- doParse p1 cs, 
+                   (y, cs'') <- doParse p2 cs']
+  )
+~~~~~
+
+Now we can more cleanly write:
 
 > twoChar = pairP oneChar oneChar 
 
@@ -175,15 +264,20 @@ which would run like this
 ~~~~~{.haskell}
 ghci> doParse twoChar "hey!"
 [(('h','e'), "y!")]
+~~~~~
 
-ghci> doParse twoChar ""
+**EXERCISE:** Can you explain why we get the following behavior?
+
+~~~~~{.haskell}
+ghci> doParse twoChar "h"
 []
 ~~~~~
+
 
 Now we could keep doing this, but often to go forward, it is helpful to
 step back and take a look at the bigger picture.
 
-Here's the the *type* of a parser
+Here's the the **type** of a parser
 
 ~~~~~{.haskell}
 newtype Parser a = P (String -> [(a, String)])
@@ -192,47 +286,89 @@ newtype Parser a = P (String -> [(a, String)])
 it should remind you of something else, remember this?
 
 ~~~~~{.haskell}
-type ST a = State -> (a, State)
+type ST a = S (State -> (a, State))
 ~~~~~
+
+*(drumroll...)*
+
 
 
 Parser is A Monad
 =================
 
 Indeed, a parser, like a state transformer, [is a monad!][2] 
-if you squint just the right way. We need to define the `return`
-and `>>=` functions. 
+if you squint just the right way. 
 
-The first is very simple, we can let the types guide us
+We need to define the `return` and `>>=` functions. 
 
-~~~~~{.haskell}
-:type returnP
-returnP :: a -> Parser a
-~~~~~
-
-
-which means we must ignore the input string and just 
-return the input element
-
-> returnP x = P (\cs -> [(x, cs)])
-
-The bind is a bit more tricky, but again, lets lean 
-on the types
+The bind is a bit tricky, but we just saw it above!
 
 ~~~~~{.haskell}
 :type bindP 
 bindP :: Parser a -> (a -> Parser b) -> Parser b
 ~~~~~
 
-
-
 so, we need to suck the `a` values out of the first 
 parser and invoke the second parser with them on the 
 remaining part of the string.
 
-> p1 `bindP` fp2 = P (\cs -> 
->   [(y, cs'') | (x, cs')  <- doParse p1 cs
->              , (y, cs'') <- doParse (fp2 x) cs'])
+QUIZ
+----
+
+Recall
+
+~~~~~{.haskell}
+doParse           :: Parser a -> String -> [(a, String)]
+doParse (P p) str = p str
+~~~~~
+
+What is the type of `goo` ?
+
+~~~~~{.haskell}
+bindP :: Parser a -> (a -> Parser b) -> Parser b
+bindP p1 fp2 = P $ \cs -> [(y, cs'') | (x, cs')  <- undefined -- 1 
+                                     , (y, cs'') <- undefined -- 2
+                          ]
+~~~~~
+
+What shall we fill in for the two `undefined` to get the code to typecheck?
+
+a. `p1 cs` and `fp2 x cs`
+b. `doParse p1 cs` and `doParse (fp2 x) cs'`
+c. `p1 cs` and `fp2 x cs'`
+d. `doParse p1 cs` and `doParse (fp2 x) cs`
+e. `doParse p1 cs` and `doParse fp2 x cs'`
+
+
+~~~~~{.haskell}
+
+
+
+
+
+~~~~~
+
+Indeed, we can define the `bindP` function for `Parser`s as:
+
+> bindP p1 fp2 = P $ \cs -> [(y, cs'') | (x, cs')  <- doParse p1 cs
+>                                      , (y, cs'') <- doParse (fp2 x) cs'])
+
+See how we suck the `a` values out of the first 
+parser (by running `doParse`) and invoke the second 
+parser on each possible `a` (and the remaining string) 
+to obtain the final `b` and remainder string tuples.
+
+The `return` is very simple, we can let the types guide us
+
+~~~~~{.haskell}
+:type returnP
+returnP :: a -> Parser a
+~~~~~
+
+which means we must ignore the input string and just return the input element
+
+> returnP x = P (\cs -> [(x, cs)])
+
 
 Armed with those, we can officially brand parsers as monads
 
@@ -240,15 +376,15 @@ Armed with those, we can officially brand parsers as monads
 >   (>>=)  = bindP
 >   return = returnP
 
+This is going to make things really sweet...
 
 Parser Combinators
 ==================
 
-Since parsers are monads, we can write a bunch of high-level
-combinators for composing smaller parsers into bigger ones.
+Since parsers are monads, we can write a bunch of **high-level combinators**
+for composing smaller parsers into bigger ones.
 
-For example, we can use our beloved `do` notation to rewrite 
-the `pairP` as
+For example, we can use our beloved `do` notation to rewrite `pairP` as
 
 > pairP px py = do x <- px
 >                  y <- py
@@ -268,9 +404,8 @@ up richer parsers like the following which parses a `Char` *if*
 it satisfies a predicate `p`
 
 > satP ::  (Char -> Bool) -> Parser Char
-> satP p = do 
->   c <- oneChar 
->   if p c then return c else failP
+> satP p = do c <- oneChar 
+>             if p c then return c else failP
 
 we can write some simple parsers for particular characters 
 
@@ -279,6 +414,7 @@ we can write some simple parsers for particular characters
 ~~~~~{.haskell}
 ghci> doParse (satP ('h' ==)) "mugatu"
 []
+
 ghci> doParse (satP ('h' ==)) "hello"
 [('h',"ello")]
 ~~~~~
@@ -290,9 +426,8 @@ The following parse alphabet and numeric characters respectively
 
 and this little fellow returns the first digit in a string as an `Int`
 
-> digitInt  = do 
->   c <- digitChar
->   return ((read [c]) :: Int)
+> digitInt  = do c <- digitChar
+>                return ((read [c]) :: Int)
 
 which works like so
 
@@ -307,6 +442,22 @@ ghci> doParse digitInt "cat"
 Finally, this parser will parse only a particular `Char` passed in as input
 
 > char c = satP (== c)
+
+
+**EXERCISE:** Write a function `strP :: String -> Parser String` such that
+`strP s` parses **exactly** the string `s` and nothing else, that is,
+
+~~~~~{.haskell}
+ghci> dogeP = strP "doge"
+
+ghci> doParse dogeP "dogerel"
+[("doge", "rel")]
+
+ghci> doParse dogeP "doggoneit"
+[]
+~~~~~
+
+
 
 A Nondeterministic Choice Combinator
 ------------------------------------
