@@ -74,10 +74,6 @@ What is the type of `foo` defined as:
 foo f z = case z of 
             Just x  -> Just (f x)
             Nothing -> Nothing 
-
-map f []  = [] 
-map f [x] = [f x]
-
 ~~~~~
 
 a. `Maybe a`
@@ -711,7 +707,8 @@ instance Monad [] where
    return x  =  [x]
 
    -- (>>=)  :: [a] -> (a -> [b]) -> [b]
-   xs >>= f  =  concat (map f xs)
+   [] >>=     f = []
+   (x:xs) >>= f = f x ++ (xs >>= f)
 ~~~~~
 
 (*Aside*: in this context, `[]` denotes the list type `[a]` without
@@ -1151,8 +1148,7 @@ return x        = S0 (\n -> (x, n))
 >              fresh >>
 >                return [n1, n2]
 
-**DO IN CLASS** 
-What do you think this would return:
+What does the following evaluate to?
 
 ~~~~~{.haskell}
 ghci> apply0 wtf2 0
@@ -1585,11 +1581,11 @@ What is the type of `foo` defined as:
 > foo f z = do x <- z 
 >              return (f x)
 
-a. TODO
-b. TODO
-c. TODO
-d. TODO
-e. TODO
+a. `(a -> b)  -> Maybe a -> Maybe b` 
+b. `(a -> b)  -> IO a    -> IO b`
+c. `(a -> b)  -> [a]     -> [b]` 
+d. `(Monad m) => (a -> b) -> m a -> m b`
+e. Type Error 
 
 ~~~~~{.haskell}
 
@@ -1636,11 +1632,11 @@ Consider the function `baz` defined as:
 What does `baz [[1, 2], [3, 4]]` return ?
 
 
-a. TODO
-b. TODO
-c. TODO
-d. TODO
-e. TODO
+a. `[1, 3], [1, 4], [2, 3], [2, 4]]`
+b. `[1, 2, 3, 4]` 
+c. `[[1, 3], [2, 4]]` 
+d. `[]` 
+e. Type error
 
 This above notion of concatenation generalizes to any monad:
 
@@ -1649,6 +1645,13 @@ This above notion of concatenation generalizes to any monad:
 >               x  <- mx
 >               return x
 
+~~~~~{.haskell}
+
+
+
+
+
+~~~~~
 
 As a final example, we can define a function that transforms
 a list of monadic expressions into a single such expression that
@@ -1748,6 +1751,13 @@ liftM (f . g)  =  liftM f . liftM g
 This equation generalises the familiar distribution property of
 map from lists to an arbitrary monad.  In order to verify this
 equation, we first rewrite the definition of `liftM` using `>>=`:
+That is, we change the definition:
+
+~~~~~{.haskell}
+liftM f mx  = do { x <- mx ; return (f x) }
+~~~~~
+
+into
 
 ~~~~~{.haskell}
 liftM f mx  =  mx >>= \x -> return (f x)
