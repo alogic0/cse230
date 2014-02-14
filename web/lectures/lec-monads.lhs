@@ -560,11 +560,18 @@ instance Eq Bool where
 
 The notion of a monad can now be captured as follows:
 
+
+
+
 ~~~~~{.haskell}
 class Monad m where
   return :: a -> m a
   (>>=)  :: m a -> (a -> m b) -> m b
 ~~~~~
+
+
+
+
 
 That is, a monad is a parameterised type `m` that supports `return`
 and `>>=` functions of the specified types.  The fact that `m` must
@@ -879,9 +886,48 @@ type of such values being a parameter of the `ST` type:
 ~~~~~{.haskell}
 type ST a = State -> (a, State)
 
+a1 :: m a
+a2 :: m b
+
+(>>=) :: m a -> (a -> m b) -> m b
+
+a1 >> a2 = a1 >>= (\_ -> a2)
+
+do a1
+   a2
+
+
+
+a1 >>= \x1 ->
+  a2 >>= \x2 -> 
+    an >= \xn ->
+      body x1 x2 ... xn
+
+
+do x1 <- a1
+   x2 <- a2
+   ...
+   xn <- an
+   body x1 ... xn
+
+
+
+
+
+
+
+
 instance Monad ST where
   -- return :: a -> ST a
-  return x  = S (\st -> (x, st)) 
+  return x  = \st -> (x, st)
+  
+
+  -- >>=    :: ST a -> (a -> ST b) -> ST b
+  ma >>= f  = \st -> 
+                let  (soma, st')  = (ma st)
+                     (somb, st'') = (f soma st')
+                in
+                     (somb, st'')
 
   -- >>=    :: ST a -> (a -> ST b) -> ST b
   tx1 >>= f = \st -> let (v, st') = tx1 st in 
@@ -1237,12 +1283,30 @@ It is now straightforward to define a function that takes a tree
 as its argument, and returns a state transformer that produces the
 same tree with each leaf labelled by a fresh integer:
 
-> mlabel            :: Tree a -> ST0 (Tree (a,Int))
-> mlabel (Leaf x)   =  do n <- fresh
->                         return (Leaf (x,n))
+mlabel            :: Tree a -> ST0 (Tree (a,Int))
+
 > mlabel (Node l r) =  do l' <- mlabel l
 >                         r' <- mlabel r
 >                         return (Node l' r')
+> mlabel (Leaf x)   =  do n <- fresh
+>                         return (Leaf (x, n))
+
+> mlabela m (Node l r) =  do l' <- mlabela m l
+>                            r' <- mlabela m r
+>                            return (Node l' r')
+> mlabela m (Leaf x)   =  do n <- m 
+>                            return (Leaf (x, n))
+
+
+mlabel
+
+b. mlabel :: Tree a -> undefined 
+
+d. mlabel :: (Monad m) => Tree a -> m (Tree (a, b))
+
+e. none of the above
+
+
 
 Note that the programmer does not have to worry about the tedious
 and error-prone task of dealing with the plumbing of fresh labels,
@@ -1348,6 +1412,13 @@ We can use it like this...
 > realfresh = do n <- get
 >                put (n+1)
 >                return n 
+
+
+> tuesday :: ST Int (Int, Int, Int) 
+> tuesday = do n1 <- realfresh
+>              n2 <- realfresh
+>              n3 <- realfresh 
+>              return (n1, n2, n3)
 
 which denotes an action that ignores (ie blows away the old state) and
 replaces it with `s'`. Note that the `put s'` is an action that itselds 
