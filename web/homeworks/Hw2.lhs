@@ -5,7 +5,7 @@ title: Homework #2, Due Friday 2/24/14
 > {-# LANGUAGE TypeSynonymInstances #-}
 > module Hw2 where
 
-> import Control.Applicative
+> import Control.Applicative hiding (empty, (<|>))
 > import Data.Map
 > import Control.Monad.State hiding (when)
 > import Text.Parsec hiding (State, between)
