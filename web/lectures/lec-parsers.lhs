@@ -312,6 +312,13 @@ so, we need to suck the `a` values out of the first
 parser and invoke the second parser with them on the 
 remaining part of the string.
 
+
+returnP :: a -> Parser a
+returnP x = P $ \cs -> [(x, cs)]
+
+
+
+
 QUIZ
 ----
 
@@ -386,6 +393,7 @@ for composing smaller parsers into bigger ones.
 
 For example, we can use our beloved `do` notation to rewrite `pairP` as
 
+> pairP       :: Parser a -> Parser b -> Parser (a, b)
 > pairP px py = do x <- px
 >                  y <- py
 >                  return (x, y)
@@ -426,8 +434,18 @@ The following parse alphabet and numeric characters respectively
 
 and this little fellow returns the first digit in a string as an `Int`
 
+
+
+
+
 > digitInt  = do c <- digitChar
 >                return ((read [c]) :: Int)
+
+
+
+
+
+
 
 which works like so
 
@@ -456,6 +474,29 @@ ghci> doParse dogeP "dogerel"
 ghci> doParse dogeP "doggoneit"
 []
 ~~~~~
+
+
+mapM f []     = return []
+mapM f (x:xs) = do y  <- f x
+                   ys <- mapM f xs
+                   return (y:ys)
+
+strP = mapM char 
+
+f = foo . bar 
+
+           cs :: [Char] 
+
+map char cs   :: [Parser Char]
+
+strP        :: [Char] -> Parser [Char] 
+strP []     = return ""
+strP (c:cs) = char c >> strP cs >> return (c:cs)
+
+sequence :: [Parser Char] -> Parser [Char]
+
+
+
 
 
 
@@ -675,7 +716,7 @@ returns an `a` and returns a parser that returns *many*
 as it can and returns them as a `[a]`.
 
 > manyP     :: Parser a -> Parser [a]
-> manyP p   = many0 `chooseP` many1 
+> manyP p   = many1 `chooseP` many0 
 >   where 
 >     many0 = return []
 >     many1 = do x  <- p
@@ -700,6 +741,14 @@ the more intuitive behavior of `many` would be to return the maximal
 sequence of elements and not *all* the prefixes.
 
 To do so, we need a *deterministic* choice combinator
+
+(#$%#$%)
+
+> firstChooseP :: Parser a -> Parser a -> Parser a
+> firstChooseP p1 p2 = P $ \cs -> case doParse (p1 `chooseP` p2) cs of
+>                          []  -> []
+>                          x:_ -> [x]
+>
 
 > (<|>) :: Parser a -> Parser a -> Parser a
 > p1 <|> p2 = P $ \cs -> case doParse (p1 `chooseP` p2) cs of
@@ -734,11 +783,17 @@ ghci> doParse (mmanyP digitInt) "123a"
 Lets use the above to write a parser that will return an entire integer
 (not just a single digit.)
 
+
+
 ~~~~~{.haskell}
 oneInt :: Parser Integer
 oneInt = do xs <- mmanyP digitChar 
             return $ ((read xs) :: Integer)
 ~~~~~
+
+bob     :: (a -> b) -> Parser a -> (Parser b)
+bob f p = do x <- p
+           return $ f x
 
 *Aside*, can you spot the pattern above? We took the 
 parser `mmanyP digitChar` and simply converted its output

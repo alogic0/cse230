@@ -523,8 +523,8 @@ much like we did for `JSON` a [few lectures back](/lectures/lec5.html)
 ~~~~~{.haskell}
 instance (Arbitrary a, Arbitrary b) => Arbitrary (a,b) where
   arbitrary = do x <- arbitrary
-	             y <- arbitrary 
-	             return (x,y)
+                 y <- arbitrary 
+                 return (x,y)
 ~~~~~
 
 or more simply
@@ -679,7 +679,7 @@ Next, lets look at how QC can be used to generate structured data,
 by doing a small case-study on checking a compiler optimization. 
 
 Recall the small *While* language that you wrote an evaluator for 
-in [HW3](/homeworks/hw3.html). 
+in [HW2](/homeworks/hw2.html). 
 
 While: Syntax
 -------------
