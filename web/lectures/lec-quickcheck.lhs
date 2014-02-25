@@ -819,8 +819,8 @@ expressions). Our generator simply chooses between randomly generated
 Third, we define a generator for `Expression` and `Statement` which 
 selects from the different cases.
 
-> --instance Arbitrary Expression where
-> --  arbitrary = arbE
+> instance Arbitrary Expression where
+>   arbitrary = arbE
 >
 > arbE = frequency [ (1, liftM Var arbitrary)
 >                  , (1, liftM Val arbitrary)
@@ -1000,7 +1000,7 @@ as a QC property
 >   ===
 >   ((x `Assign` e) `Sequence` (y `Assign` Var x))
 
-Might QC, do you agree ?
+Mighty QC, do you agree ?
 
 ~~~~~{.haskell}
 *Main> quickCheck prop_const_prop 
@@ -1027,12 +1027,12 @@ which will take a candidate and generate a list of *smaller* candidates
 that QC will systematically crunch through till it finds a minimally
 failing test!
 
-> instance Arbitrary Expression where
->   arbitrary = sized arbnE
+> -- instance Arbitrary Expression where
+>   -- arbitrary = sized arbnE
 >
->   shrink (Plus e1 e2)  = [e1, e2]
->   shrink (Minus e1 e2) = [e1, e2]
->   shrink _             = []
+>   -- shrink (Plus e1 e2)  = [e1, e2]
+>   -- shrink (Minus e1 e2) = [e1, e2]
+>   -- shrink _             = []
 
 Lets try it again to see if we can figure it out!
 
@@ -1065,19 +1065,21 @@ are they equivalent? Pretty subtle, eh.
 Well, I hope I've convinced you that QuickCheck is pretty awesome. 
 The astonishing thing about it is its sheer simplicity -- a few 
 fistfuls of typeclasses and a tiny pinch of monads and lo! a 
-shocking useful testing technique that can find a bunch of 
+shockingly useful testing technique that can find a bunch of 
 subtle bugs or inconsistencies in your code. 
 
-Moral of the story -- types can go a long way towards making your code
-*obviously correct*, but not the whole distance. Make up the difference 
-by writing properties, and have the machine crank out tests for you!
+Moral of the story -- types can go a long way towards making 
+your code *obviously correct*, but not the whole distance. 
+Make up the difference by writing properties, and have the 
+machine crank out thousands of tests for you!
 
-There is a lot of literature on QuickCheck on the web. It is used
-for a variety of commercial applications, both in Haskell and in 
-pretty much every modern language, including [Perl][10]. 
-Even if you don't implement a system in Haskell, you can use
-QuickCheck to test it, by just using the nifty [data generation][9] 
-facilities. 
+There is a lot of literature on QuickCheck on the web. 
+It is used for a variety of commercial applications, 
+both in Haskell and in pretty much every modern language, 
+including [Perl][10]. 
+Even if you don't implement a system in Haskell, you 
+can use QuickCheck to test it, by just using the nifty 
+[data generation][9] facilities. 
 
 
 Appendix: Helper Code
