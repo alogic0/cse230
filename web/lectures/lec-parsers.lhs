@@ -881,6 +881,15 @@ I wonder if we can try to fix it just by flipping the order
 >                 y <- oneInt
 >                 return $ x `o` y
 
+> calc1'      ::  Parser Int
+> calc1'      = oneInt <|> binExp
+>   where 
+>     binExp = do x <- calc1'
+>                 o <- intOp 
+>                 y <- oneInt
+>                 return $ x `o` y
+
+
 
 QUIZ
 ----
@@ -888,7 +897,7 @@ QUIZ
 What does the following evaluate to?
 
 ~~~~~{.haskell}
-ghci> doParse calc1 "11+22-33+45"
+ghci> doParse calc1' "11+22-33+45"
 ~~~~~
 
 a. `[( 11 , "+22-33+45")]`
@@ -930,11 +939,52 @@ as the string is parsed as
 ~~~~~
 
 
-$$> calc2 = oneInt >>= grab
-$$>   where grab x = kg x <|> return x
-$$>         kg x   = do o <- intOp
-$$>                     y <- oneInt
-$$>                     grab $ x `o` y
+
+> sumE1  = chain addOp prodE1
+> prodE1 = chain mulOp factorE1 
+> factorE1 = parenP sumE1 <|> oneInt
+
+
+
+> chainl op base = base >>= bob
+>   where
+>     bob  x    = grab x <|> return x
+>     grab x    = do o <- op
+>                    y <- base
+>                    bob $ x `o` y
+
+
+> sumE1       = prodE1 >>= bob 
+>   where 
+>     bob   x = grab x <|> return x
+>     grab  x = do o <- addOp
+>                  y <- prodE1 
+>                  bob $ x `o` y
+> 
+> prodE1      = factorE1 >>= bob 
+>   where 
+>     bob   x = grab x <|> return x
+>     grab  x = do o <- mulOp
+>                  y <- factorE1 
+>                  bob $ x `o` y
+> 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Precedence
 ----------

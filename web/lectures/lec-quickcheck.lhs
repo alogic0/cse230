@@ -9,7 +9,7 @@ title: QuickCheck: Type-directed Property Testing
 > import Data.List
 > import qualified Data.Map as M 
 > import Control.Monad.State hiding (when)
-
+> import Control.Applicative (<$>)
 
 In this lecture, we will look at [QuickCheck][1], a technique that
 cleverly exploits typeclasses and monads to deliver a powerful 
@@ -115,7 +115,7 @@ implementation of *quicksort* in Haskell.
 
 > qsort []     = []
 > qsort (x:xs) = qsort lhs ++ [x] ++ qsort rhs
->   where lhs  = [y | y <- xs, y < x]
+>   where lhs  = [y | y <- xs, y <= x]
 >         rhs  = [z | z <- xs, z > x]
 
 Really doesn't need much explanation! Lets run it "by hand" on a few inputs
@@ -167,6 +167,11 @@ of the input
 
 > prop_qsort_min :: [Int] -> Bool
 > prop_qsort_min xs = head (qsort xs) == minimum xs
+
+> prop_qsort_min' :: [Int] -> Bool
+> prop_qsort_min' xs = (null xs) || head (qsort xs) == minimum xs 
+
+
 
 However, when we run this, we run into a glitch
 
@@ -275,9 +280,9 @@ lists of distinct elements
 and then, weakening the equivalence to only hold on inputs that 
 are duplicate-free 
 
-> prop_qsort_distinct_sort :: [Int] -> Property
+> prop_qsort_distinct_sort :: [Int] -> Bool 
 > prop_qsort_distinct_sort xs = 
->   (isDistinct xs) ==> qsort xs == sort xs
+>   (isDistinct xs) ==> (qsort xs == sort xs)
 
 QuickCheck happily checks the modified properties
 
@@ -566,6 +571,19 @@ ghci> sample $ choose (0, 3)
 0
 ~~~~~
 
+QUIZ
+----
+
+What is a plausible type for `sample`? 
+
+
+a. `Gen a -> [a]`
+b. `Gen a -> Gen [a]`
+c. `Gen a -> IO [a]`
+d. `Gen a -> IO a`
+e. `a -> Gen [a]`
+
+
 A second useful combinator is `elements` 
 
 ~~~~~{.haskell}
@@ -612,7 +630,18 @@ ghci> sample $ oneof [elements [10,20,30], choose (0,3)]
 30
 ~~~~~
 
-and finally, the above is generalized into the `frequency` combinator 
+EXERCISE
+--------
+
+Lets try to figure out the **implementation** of `oneOf`
+
+~~~~~{.haskell}
+oneOf :: [Gen a] -> Gen a
+oneOf = error "LETS DO THIS IN CLASS"
+~~~~~
+
+
+Finally, `oneOf` is generalized into the `frequency` combinator 
 
 ~~~~~{.haskell}
 frequency :: [(Int, Gen a)] -> Gen a
@@ -629,8 +658,25 @@ We can use the above combinators to write generators for lists
 > genList1 ::  (Arbitrary a) => Gen [a]
 > genList1 = liftM2 (:) arbitrary genList1
 
-Can you spot a problem in the above? It only generates infinite 
-lists! Hmm. Lets try again,
+Can you spot a problem in the above? 
+
+~~~~~{.haskell}
+-- btw, don't freak out, remember that 
+
+liftM2 f mx my = do x <- m1
+                    y <- m2
+                    return $ f x y
+
+-- So the above is the same as
+
+genList1 = do x  <- arbitrary
+              xs <- gentList1
+              return $ x : xs
+~~~~~
+
+
+
+**Problem**: `genList1` only generates infinite lists! Hmm. Lets try again,
 
 > genList2 ::  (Arbitrary a) => Gen [a]
 > genList2 = oneof [ return []
@@ -646,7 +692,17 @@ chance of not finishing off with the empty list, so lets use
 We can use the above to build a custom generator that always returns
 *ordered lists* by piping the generate list into the `sort` function
 
-> genOrdList = genList3 >>= return . sort
+> genOrdList = sort <$> genList3 
+
+~~~~~{.haskell}
+-- again, remember that, <$> is just `fmap` where:
+
+fmap f m = do {x <- m; return (f x)} 
+
+-- so really the above is the same as:
+
+genOrdList = do { x <- genList3 ; return (sort x) }
+~~~~~
 
 To *check* the output of a custom generator we can use the `forAll` combinator
 
@@ -871,13 +927,13 @@ whoops! Forgot about those pesky boolean expressions! If you think about it,
 
 ~~~~~{.haskell}
 X := True + 0
-~~~~~{.haskell}
+~~~~~
 
 will assign `0` to the variable while
 
 ~~~~~{.haskell}
 X := True 
-~~~~~{.haskell}
+~~~~~
 
 will assign `True` to the variable! Urgh. Ok, lets limit ourselves to *Integer* 
 expressions
