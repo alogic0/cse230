@@ -156,7 +156,25 @@ Thus, in `evalExcc` we have just *caught* the exception to return a `Maybe` valu
 in the case that something went wrong. Not the most sophisticated form of
 error handling, but you get the picture.
 
-**Exercise** What do you think the *type* of `tryCatch` should be?
+QUIZ 
+----
+
+What should the **type** of `tryCatch` be?
+
+a. `Exc a -> (a -> Exc b) -> Exc b`
+b. `Exc a -> Exc a`
+c. `Exc a`
+d. `Exc a -> (String -> Exc a) -> Exc a`
+e. None of the above
+
+
+~~~~~{.haskell}
+
+
+
+
+
+~~~~~
 
 
 > tryCatch :: Exc a -> (String -> Exc a) -> Exc a
@@ -181,11 +199,11 @@ Result Nothing
 
 
 
-Counting Operations Via State Monads
-------------------------------------
+Profiling Operations Via State Monads
+-------------------------------------
 
 Next, lets stop being so paranoid about errors and instead 
-try to do some *profiling*. Lets imagine that the `div` 
+try to do some **profiling**. Lets imagine that the `div` 
 operator is very expensive, and that we would like to 
 *count* the number of divisions that are performed while
 evaluating a particular expression.
@@ -349,8 +367,8 @@ monad* in the typeclass
 
 > class Monad m => MonadST m where
 >   runStateST :: m a -> StateST -> m (a, StateST)
->   getST :: m StateST 
->   putST :: StateST -> m ()
+>   getST      :: m StateST 
+>   putST      :: StateST -> m ()
 
 which corresponds to monads that are kitted out with the
 appropriate execution, extraction and modification functions.
@@ -358,8 +376,8 @@ Needless to say, we can make `ST` an instance of the above by
 
 > instance MonadST ST where
 >   runStateST (S f)  = return . f 
->   getST = S (\s -> (s, s))
->   putST = \s' -> S (\_ -> ((), s'))
+>   getST             = S (\s -> (s, s))
+>   putST             = \s' -> S (\_ -> ((), s'))
 
 Once again, if you know whats good for you, enter the body of
 `evalST` into GHCi and see what type is inferred.
@@ -370,7 +388,6 @@ Step 2: Using Monads With Special Features
 Armed with these two typeclasses, we can write our evaluator
 quite easily
 
-> evalMega ::  (MonadExc m, MonadST m) => Expr -> m Int
 > evalMega (Val n)   = return n
 > evalMega (Div x y) = do n <- evalMega x
 >                         m <- evalMega y
@@ -379,16 +396,40 @@ quite easily
 >                           then throw $ errorS y m 
 >                           else return $ n `div` m
 
+QUIZ
+----
+
+What is the type of `evalMega` ?
+
+a. `Expr -> ST Int`
+b. `Expr -> Exc Int`
+c. `(MonadST m) => Expr -> m Int`
+d. `(MonadExc m) => Expr -> m Int`
+e. None of the above
+
+~~~~~{.haskell}
+
+
+
+
+
+
+~~~~~
+
+
 Note that it is simply the combination of the two evaluators
 from before -- we use the `throw` from `evalExc` and the 
 `tickST` from `evalST`. Meditate for a moment on the type of 
 above evaluator; note that it works with *any monad* that 
-is both a exception- and a state- monad! Indeed, if, as I 
-exhorted you to, you had gone back and studied the types of
-`evalST` and `evalExc` you would find that each of those 
-functions required the underlying monad to be a 
-state-manipulating and exception-handling monad respectively.
-In contrast, the above evaluator simply demands both features.
+is **both** a exception- and a state- monad! 
+
+Indeed, if, as I exhorted you to, you had gone back and studied the types of
+`evalST` and `evalExc` you would find that each of those functions required the
+underlying monad to be a state-manipulating and exception-handling monad
+respectively.  In contrast, the above evaluator simply demands both features.
+
+**Next:** But, but, but ... how do we create monads with **both** features?
+
 
 Step 3: Injecting Special Features into Monads
 ----------------------------------------------
@@ -811,7 +852,7 @@ Moral of the story
 There are many useful monads, and if you play your cards right, Haskell
 will let you *stack* them nicely on top of each other, so that you can get
 *mega-monads* that have all the powers of the individual monads. See for
-yourself in [Homework 4][8].
+yourself in [Homework 3][8].
 
 
 [1]: http://hackage.haskell.org/packages/archive/base/latest/doc/html/Prelude.html#t:Either
@@ -821,4 +862,4 @@ yourself in [Homework 4][8].
 [5]: http://hackage.haskell.org/packages/archive/mtl/latest/doc/html/Control-Monad-State-Class.html#t:MonadState
 [6]: http://hackage.haskell.org/packages/archive/mtl/latest/doc/html/Control-Monad-Error-Class.html#t:MonadError
 [7]: http://hackage.haskell.org/packages/archive/transformers/latest/doc/html/Control-Monad-Trans-Writer-Lazy.html#t:Writer
-[8]: homeworks/hw4.html 
+[8]: homeworks/hw3.html 

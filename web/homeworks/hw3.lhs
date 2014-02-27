@@ -1,369 +1,504 @@
 ---
-title: Homework #3, Due Sunday, February 17th
+title: Homework #3, Due Friday, March 7th 
 ---
 
 Preliminaries
 =============
 
-Before starting this part of the assignment:
+Before starting this part of the assignment, 
 
-1. Install `parsec3` via the command `cabal install parsec3`
+1. Install the following packages 
+
+~~~~~{.haskell}
+$ cabal install mtl
+$ cabal install quickcheck
+~~~~~
+
 2. Learn to read the [documentation](http://hackage.haskell.org)
-3. Download the test files 
-   [test.imp](/static/test.imp),
-   [fact.imp](/static/fact.imp), 
-   [abs.imp](/static/abs.imp), 
-   [times.imp](/static/times.imp).
+
+To complete this homework, download [this file](/homeworks/Hw3.lhs) 
+as plain text and answer each question, filling in code where it says
+`"TODO"`. Your code must typecheck against the given type signatures. 
+Feel free to add your own tests to this file to exercise the 
+functions you write. Submit your homework by sending this file, 
+filled in appropriately, to cse230@goto.ucsd.edu with the subject
+“HW3”; you will receive a confirmation email after submitting. 
+Please note that this address is unmonitored; if you have any 
+questions about the assignment, email Pat at prondon@cs.ucsd.edu.
+
+> {-# LANGUAGE TypeSynonymInstances, FlexibleContexts, NoMonomorphismRestriction, OverlappingInstances, FlexibleInstances #-}
+
+> import Data.Map hiding (map, foldr)
+
+> import Control.Monad.State
+> import Control.Monad.Error
+> import Control.Monad.Writer
+
+> import Test.QuickCheck 
+> import Control.Monad (forM, forM_)
+> import Data.List (transpose, intercalate)
 
 
-Submission Instructions
-=======================
+> quickCheckN n = quickCheckWith $ stdArgs { maxSuccess = n}
 
-To complete this homework, download [this file as plain text](hw3.lhs) and
-answer each question, filling in code where noted (where it says "TBD"). 
-Your code must typecheck against the given type signatures.
-Feel free to add your own tests to this file to exercise the functions
-you write.  Submit your homework by sending this file, filled in
-appropriately, to `cse230@goto.ucsd.edu` with the subject "HW3"; you
-will receive a confirmation email after submitting.  Please note that
-this address is unmonitored; if you have any questions about the
-assignment, email Pat at `prondon@cs.ucsd.edu`.
+Problem 1: An Interpreter for WHILE++ 
+=====================================
 
-> {-# LANGUAGE TypeSynonymInstances #-}
-> module Hw3 where
-> import Fal hiding (between, pball, walls, paddle)
-> import Animation (picToGraphic)
-> import qualified SOE as G
-> import Picture
-> import Data.Map
-> import Control.Monad.State hiding (when)
-> import Text.Parsec hiding (State, between)
-> import Text.Parsec.Combinator hiding (between)
-> import Text.Parsec.Char
-> import Text.Parsec.String
+Previously, you wrote a simple interpreter for *WHILE*.
+For this problem, you will use monad transformers to build
+an evaluator for *WHILE++* which, adds exceptions and I/O 
+to the original language.
 
-Problem 1 : Pong
-================
-
-For the first problem, extend the paddleball game we saw in class to a two
-player [Pong](http://en.wikipedia.org/wiki/Pong).
-
-![Pong ScreenShot](/static/pong.png)
-
-Both players start with `0` points, and whenever a player misses the ball,
-the other player gets a point. When the game begins, and after each player 
-wins a point, the score is shown and the game must continue after a key is 
-pressed. The game must continue till a player reaches
-
-> maxscore = 5
-
-at which point she is declared the winner. The top level game is issued by
-the function
-
-> playPong = reactimate "pong" $ pong 0 0 2.0
-
-which renders the behavior
-
-> pong ::  Integer -> Integer -> Float -> Behavior G.Graphic
-> pong p1score p2score vel =
->   if p1score == maxscore then
->     lift0 $ G.text (0, 0) "Player 1 wins!"
->   else if p2score == maxscore then
->     lift0 $ G.text (0, 0) "Player 2 wins!"
->   else
->     lift0 (G.text (0, 0) $ show p1score ++ " vs. " ++ show p2score)
->     `untilB` key ->> play p1score p2score vel
-
-
-Your task is to fill in the implementation of following function
-
-> play ::  Integer -> Integer -> Float -> Behavior G.Graphic
-> play p1score p2score vel = error "TBD"
-
-Use the same conditions as in `paddleball` to determine when the ball has
-hit the paddle. The ball can be said to have missed player 1's paddle (ie
-player 2 scores a point) when the ball's y-coordinate  
-
-~~~~~~{.haskell}
-ypos <* -2.5
-~~~~~~
-
-dually, player 1 scores a point when
-
-~~~~~~{.haskell}
-ypos >* 2.5
-~~~~~~
-
-You may use the following behaviors to render the wall,
-
-> walls = left `over` right
->   where left  = paint blue $ translate (-2.2,0) (rec 0.05 3.4)
->         right = paint blue $ translate ( 2.2,0) (rec 0.05 3.4)
-
-the paddles for each player,
-
-> paddle1 ::  Behavior Picture
-> paddle1 = paddle (-1.7) red p1input
->
-> paddle2 ::  Behavior Picture
-> paddle2 = paddle 1.7 green p2input
->
-> paddle :: Behavior Float-> Behavior Color-> Behavior Float-> Behavior Picture
-> paddle y color pos = paint color $ translate (pos, y) (rec 0.5 0.05)
-
-The positions of the paddles of each player are given by the following
-behaviors
-
-> p1input ::  Behavior Float
-> p1input = keyboardPos
-> p2input ::  Behavior Float
-> p2input = fst mouse
-
-which are generated thus (you can ignore this if you are not curious...)
-
-> keyUpE k = Event (\(uas,_) -> Prelude.map getkey uas)
->   where getkey (Just (G.Key k' False)) | k' == k = Just ()
->         getkey _                               = Nothing
->         
-> kbSpeed = 2.5
-> 
-> keyboardVel = lift0 0 `switch` key =>> \k ->
->   case k of
->     'a' -> lift0 (-kbSpeed) `untilB` (keyUpE 'a') ->> lift0 0
->     'd' -> lift0 kbSpeed `untilB` (keyUpE 'd') ->> lift0 0
->     _   -> lift0 0
-> 
-> keyboardPos = integral keyboardVel
-
-Problem 2: An Interpreter for WHILE 
-===================================
-
-Next, you will use monads to build an evaluator for
-a simple *WHILE* language. In this language, we will
-represent different program variables as 
+As before, we have variables, and expressions.
 
 > type Variable = String
-
-Programs in the language are simply values of the type
-
-> data Statement =
->     Assign Variable Expression          -- x = e
->   | If Expression Statement Statement   -- if (e) {s1} else {s2}
->   | While Expression Statement          -- while (e) {s}
->   | Sequence Statement Statement        -- s1; s2
->   | Skip                                -- no-op
->   deriving (Show)
-
-where expressions are variables, constants or 
-binary operators applied to sub-expressions
-
-> data Expression =
->     Var Variable                        -- x
->   | Val Value                           -- v 
->   | Op  Bop Expression Expression
->   deriving (Show)
-
-and binary operators are simply two-ary functions
-
-> data Bop = 
->     Plus     -- +  :: Int  -> Int  -> Int
->   | Minus    -- -  :: Int  -> Int  -> Int
->   | Times    -- *  :: Int  -> Int  -> Int
->   | Divide   -- /  :: Int  -> Int  -> Int
->   | Gt       -- >  :: Int -> Int -> Bool 
->   | Ge       -- >= :: Int -> Int -> Bool
->   | Lt       -- <  :: Int -> Int -> Bool
->   | Le       -- <= :: Int -> Int -> Bool
->   deriving (Show)
-
+> type Store    = Map Variable Value
+>
 > data Value =
 >     IntVal Int
 >   | BoolVal Bool
 >   deriving (Show)
+>
+> data Expression =
+>     Var Variable
+>   | Val Value  
+>   | Op  Bop Expression Expression
+>   deriving (Show)
+>
+> data Bop = 
+>     Plus     
+>   | Minus    
+>   | Times    
+>   | Divide   
+>   | Gt        
+>   | Ge       
+>   | Lt       
+>   | Le       
+>   deriving (Show)
 
-We will represent the *store* i.e. the machine's memory, as an associative
-map from `Variable` to `Value` 
+Programs in the language are simply values of the type
 
-> type Store = Map Variable Value
+> data Statement =
+>     Assign Variable Expression          
+>   | If Expression Statement Statement
+>   | While Expression Statement       
+>   | Sequence Statement Statement        
+>   | Skip
+>   | Print String Expression
+>   | Throw Expression
+>   | Try Statement Variable Statement
+>   deriving (Show)
 
-**Note:** we don't have exceptions (yet), so if a variable
-is not found (eg because it is not initialized) simply return 
-the value `0`. In future assignments, we will add this as a 
-case where exceptions are thrown (the other case being type errors.)
+The only new constructs are the `Print`, `Throw` and the `Try` statements. 
 
-We will use the standard library's `State` 
-[monad](http://hackage.haskell.org/packages/archive/mtl/latest/doc/html/Control-Monad-State-Lazy.html#g:2)
-to represent the world-transformer.
+- `Print s e` should print out (eg to stdout) log the string corresponding 
+  to the string `s` followed by whatever `e` evaluates to, followed by a
+  newline --- for example, `Print "Three: " (IntVal 3)' should display
+  "Three: IntVal 3\n",
+
+- `Throw e` evaluates the expression `e` and throws it as an exception, and
+
+- `Try s x h` executes the statement `s` and if in the course of
+  execution, an exception is thrown, then the exception comes shooting 
+  up and is assigned to the variable `x` after which the *handler*
+  statement `h` is executed.
+
+We will use the `State` [monad][2] to represent the world-transformer.
 Intuitively, `State s a` is equivalent to the world-transformer 
 `s -> (a, s)`. See the above documentation for more details. 
 You can ignore the bits about `StateT` for now.
 
-Expression Evaluator
+Use monad transformers to write a function
+
+> evalS :: (MonadState Store m, MonadError Value m, MonadWriter String m) => Statement -> m ()
+> evalS = error "TODO"
+
+and use the above function to implement a second function
+
+> execute :: Store -> Statement -> (Store, Maybe Value, String)
+> execute = error "TODO"
+
+such that `execute st s` returns a triple `(st', exn, log)` where 
+
+- `st'` is the output state, 
+- `exn` is possibly an exception (if the program terminates with an uncaught exception), 
+- `log` is the log of messages generated by the `Print` statements.
+
+Requirements
+------------
+
+In the case of exceptional termination, the `st'` should be the state *at
+the point where the last exception was thrown, and `log` should include all
+the messages *upto* that point -- make sure you stack your transformers
+appropriately! 
+
+- Reading an undefined variable should raise an exception carrying the value `IntVal 0`.
+
+- Division by zero should raise an exception carrying the value `IntVal 1`.
+
+- A run-time type error (addition of an integer to a boolean, comparison of
+  two values of different types) should raise an exception carrying the value
+  `IntVal 2`.
+
+Example 1
+---------
+
+If `st` is the empty state (all variables undefined) and `s` is the program
+
+~~~~~{.haskell}
+X := 0 ;
+Y := 1 ;
+print "hello world: " X;
+if X < Y then
+  throw (X+Y)
+else 
+  skip
+endif;
+Z := 3 
+~~~~~
+
+then `execute st s` should return the triple 
+
+~~~~~{.haskell}
+(fromList [("X", IntVal 0), ("Y",  IntVal 1)], Just (IntVal 1), "hello world: IntVal 0\n")
+~~~~~
+
+The program is provided as a Haskell value below:
+
+> mksequence = foldr Sequence Skip
+
+> testprog1 = mksequence [Assign "X" $ Val $ IntVal 0,
+>                         Assign "Y" $ Val $ IntVal 1,
+>                         Print "hello world: " $ Var "X",
+>                         If (Op Lt (Var "X") (Var "Y")) (Throw (Op Plus (Var "X") (Var "Y")))
+>                                                        Skip,
+>                         Assign "Z" $ Val $ IntVal 3]
+
+Example 2
+---------
+
+If `st` is the empty state (all variables undefined) and `s` is the program
+
+~~~~~{.haskell}
+X := 0 ;
+Y := 1 ;
+try  
+  if X < Y then
+    A := 100;
+    throw (X+Y);
+    B := 200
+  else 
+    skip
+  endif;
+catch E with
+  Z := E + A
+endwith
+~~~~~
+
+then `execute st s` should return the triple 
+
+~~~~~{.haskell}
+( fromList [("A", IntVal 100), ("E", IntVal 1)
+           ,("X", IntVal 0), ("Y", IntVal 1)
+ 	   ,("Z", IntVal 101)]
+, Nothing 
+, "")
+~~~~~
+
+Again, the program as a Haskell value:
+
+> testprog2 = mksequence [Assign "X" $ Val $ IntVal 0,
+>                         Assign "Y" $ Val $ IntVal 1,
+>                         Try (If (Op Lt (Var "X") (Var "Y"))
+>                                 (mksequence [Assign "A" $ Val $ IntVal 100,
+>                                              Throw (Op Plus (Var "X") (Var "Y")),
+>                                              Assign "B" $ Val $ IntVal 200])
+>                                 Skip)
+>                             "E"
+>                             (Assign "Z" $ Op Plus (Var "E") (Var "A"))]
+
+
+Problem 2: Circuit Testing
+==========================
+
+Credit: [UPenn CIS552][1]
+
+For this problem, you will look at a model of circuits in Haskell.
+
+Signals
+-------
+
+A *signal* is a list of booleans.  
+
+> newtype Signal = Sig [Bool]
+
+By convention, all signals are infinite. We write a bunch of lifting
+functions that lift boolean operators over signals.
+
+> lift0 ::  Bool -> Signal
+> lift0 a = Sig $ repeat a
+> 
+> lift1 ::  (Bool -> Bool) -> Signal -> Signal
+> lift1 f (Sig s) = Sig $ map f s
+> 
+> lift2 ::  (Bool -> Bool -> Bool) -> (Signal, Signal) -> Signal
+> lift2 f (Sig xs, Sig ys) = Sig $ zipWith f xs ys
+> 
+> lift22 :: (Bool -> Bool -> (Bool, Bool)) -> (Signal, Signal) -> (Signal,Signal)
+> lift22 f (Sig xs, Sig ys) = 
+>   let (zs1,zs2) = unzip (zipWith f xs ys)
+>   in (Sig zs1, Sig zs2) 
+> 
+> lift3 :: (Bool->Bool->Bool->Bool) -> (Signal, Signal, Signal) -> Signal
+> lift3 f (Sig xs, Sig ys, Sig zs) = Sig $ zipWith3 f xs ys zs
+> 
+
+Simulation
+----------
+
+Next, we have some helpers that can help us simulate a circuit by showing
+how it behaves over time. For testing or printing, we truncate a signal to 
+a short prefix 
+
+> truncatedSignalSize = 20
+> truncateSig bs = take truncatedSignalSize bs
+> 
+> instance Show Signal where
+>   show (Sig s) = show (truncateSig s) ++ "..."
+> 
+> trace :: [(String, Signal)] -> Int -> IO ()
+> trace desc count = do 
+>   putStrLn   $ intercalate " " names
+>   forM_ rows $ putStrLn . intercalate " " . rowS
+>   where (names, wires) = unzip desc
+>         rows           = take count . transpose . map (\ (Sig w) -> w) $ wires
+>         rowS bs        = zipWith (\n b -> replicate (length n - 1) ' ' ++ (show (binary b))) names bs
+> 
+> probe :: [(String,Signal)] -> IO ()
+> probe desc = trace desc 1
+> 
+> simulate :: [(String, Signal)] -> IO ()
+> simulate desc = trace desc 20
+
+Testing support (QuickCheck helpers)
+------------------------------------
+
+Next, we have a few functions that help to generate random tests
+
+> instance Arbitrary Signal where
+>   arbitrary = do 
+>     x      <- arbitrary
+>     Sig xs <- arbitrary
+>     return $ Sig (x : xs)
+> 
+> arbitraryListOfSize n = forM [1..n] $ \_ -> arbitrary
+
+To check whether two values are equivalent 
+
+> class Agreeable a where
+>   (===) :: a -> a -> Bool
+> 
+> instance Agreeable Signal where
+>   (Sig as) === (Sig bs) = 
+>     all (\x->x) (zipWith (==) (truncateSig as) (truncateSig bs))
+> 
+> instance (Agreeable a, Agreeable b) => Agreeable (a,b) where
+>   (a1,b1) === (a2,b2) = (a1 === a2) && (b1 === b2)
+> 
+> instance Agreeable a => Agreeable [a] where
+>   as === bs = all (\x->x) (zipWith (===) as bs)
+> 
+
+To convert values from boolean to higher-level integers
+
+> class Binary a where
+>   binary :: a -> Integer
+> 
+> instance Binary Bool where
+>   binary b = if b then 1 else 0
+> 
+> instance Binary [Bool] where
+>   binary = foldr (\x r -> (binary x) + 2 *r) 0
+
+And to probe signals at specific points.
+
+> sampleAt n (Sig b) = b !! n
+> sampleAtN n signals = map (sampleAt n) signals
+> sample1 = sampleAt 0
+> sampleN = sampleAtN 0
+
+
+Basic Gates
+-----------
+
+The basic gates from which we will fashion circuits can now be described.
+
+> or2 ::  (Signal, Signal) -> Signal
+> or2 = lift2 $ \x y -> x || y 
+> 
+> xor2 :: (Signal, Signal) -> Signal
+> xor2 = lift2 $ \x y -> (x && not y) || (not x && y)
+> 
+> and2 :: (Signal, Signal) -> Signal
+> and2 = lift2 $ \x y -> x && y 
+> 
+> imp2 ::  (Signal, Signal) -> Signal
+> imp2 = lift2 $ \x y -> (not x) || y 
+>
+> mux :: (Signal, Signal, Signal) -> Signal
+> mux = lift3 (\b1 b2 select -> if select then b1 else b2)
+>
+> demux :: (Signal, Signal) -> (Signal, Signal)
+> demux args = lift22 (\i select -> if select then (i, False) else (False, i)) args
+>
+> muxN :: ([Signal], [Signal], Signal) -> [Signal]
+> muxN (b1,b2,sel) = map (\ (bb1,bb2) -> mux (bb1,bb2,sel)) (zip b1 b2)
+>
+> demuxN :: ([Signal], Signal) -> ([Signal], [Signal])
+> demuxN (b,sel) = unzip (map (\bb -> demux (bb,sel)) b)
+
+
+Basic Signals 
+-------------
+
+Similarly, here are some basic signals
+
+> high = lift0 True
+> low  = lift0 False
+>
+> str   ::  String -> Signal
+> str cs = Sig $ (map (== '1') cs) ++ (repeat False)
+>
+> delay ::  Bool -> Signal -> Signal
+> delay init (Sig xs) = Sig $ init : xs
+
+
+Combinational circuits
+----------------------
+
+**NOTE** When you are asked to implement a circuit, you must **ONLY** use
+the above gates or smaller circuits built from the gates.
+
+For example, the following is a *half-adder* (that adds a carry-bit to a
+single bit).
+
+> halfadd :: (Signal, Signal) -> (Signal, Signal)
+> halfadd (x,y) = (sum,cout)
+>   where sum   = xor2 (x, y)
+>         cout  = and2 (x, y)
+
+Here is a simple property about the half-adder
+
+> prop_halfadd_commut b1 b2 =
+>   halfadd (lift0 b1, lift0 b2) === halfadd (lift0 b2, lift0 b1) 
+
+We can use the half-adder to build a full-adder
+
+> fulladd (cin, x, y) = (sum, cout)
+>   where (sum1, c1)  = halfadd (x,y)
+>         (sum, c2)   = halfadd (cin, sum1)
+>         cout        = xor2 (c1,c2) 
+> 
+> test1a = probe [("cin",cin), ("x",x), ("y",y), ("  sum",sum), ("cout",cout)]
+>   where cin        = high
+>         x          = low
+>         y          = high
+>         (sum,cout) = fulladd (cin, x, y)
+
+and then an n-bit adder
+
+> bitAdder :: (Signal, [Signal]) -> ([Signal], Signal)
+> bitAdder (cin, [])   = ([], cin)
+> bitAdder (cin, x:xs) = (sum:sums, cout)
+>   where (sum, c)     = halfadd (cin,x)
+>         (sums, cout) = bitAdder (c,xs)
+> 
+> test1 = probe [("cin",cin), ("in1",in1), ("in2",in2), ("in3",in3), ("in4",in4),
+>                ("  s1",s1), ("s2",s2), ("s3",s3), ("s4",s4), ("c",c)]
+>   where
+>     cin = high
+>     in1 = high
+>     in2 = high
+>     in3 = low
+>     in4 = high
+>     ([s1,s2,s3,s4], c) = bitAdder (cin, [in1,in2,in3,in4])
+
+The correctness of the above circuit is described by the following property
+that compares the behavior of the circuit to the *reference implementation*
+which is an integer addition function
+
+> prop_bitAdder_Correct ::  Signal -> [Bool] -> Bool
+> prop_bitAdder_Correct cin xs =
+>   binary (sampleN out ++ [sample1 cout]) == binary xs + binary (sample1 cin)
+>   where (out, cout) = bitAdder (cin, map lift0 xs) 
+ 
+Finally, we can use the bit-adder to build an adder that adds two N-bit numbers
+
+> adder :: ([Signal], [Signal]) -> [Signal]
+> adder (xs, ys) = 
+>    let (sums,cout) = adderAux (low, xs, ys)
+>    in sums ++ [cout]
+>    where                                        
+>      adderAux (cin, [], [])     = ([], cin)
+>      adderAux (cin, x:xs, y:ys) = (sum:sums, cout)
+>                                   where (sum, c) = fulladd (cin,x,y)
+>                                         (sums,cout) = adderAux (c,xs,ys)
+>      adderAux (cin, [], ys)     = adderAux (cin, [low], ys)
+>      adderAux (cin, xs, [])     = adderAux (cin, xs, [low])
+> 
+> test2 = probe [ ("x1", x1), ("x2",x2), ("x3",x3), ("x4",x4),
+>                 (" y1",y1), ("y2",y2), ("y3",y3), ("y4",y4), 
+>                 (" s1",s1), ("s2",s2), ("s3",s3), ("s4",s4), (" c",c) ]
+>   where xs@[x1,x2,x3,x4] = [high,high,low,low]
+>         ys@[y1,y2,y3,y4] = [high,low,low,low]
+>         [s1,s2,s3,s4,c]  = adder (xs, ys)
+
+And we can specify the correctness of the adder circuit by
+
+> prop_Adder_Correct ::  [Bool] -> [Bool] -> Bool
+> prop_Adder_Correct l1 l2 = 
+>   binary (sampleN sum) == binary l1 + binary l2
+>   where sum = adder (map lift0 l1, map lift0 l2) 
+
+Problem: Subtraction
 --------------------
 
-First, write a function 
+1. Using `prop_bitAdder_Correct` as a model, write a speciﬁcation for a
+single-bit subtraction function that takes as inputs a N-bit binary 
+number and a single bit to be subtracted from it and yields as
+outputs an N-bit binary number. Subtracting one from zero should
+yield zero.
 
-> evalE :: Expression -> State Store Value
+> prop_bitSubtractor_Correct ::  Signal -> [Bool] -> Bool
+> prop_bitSubtractor_Correct = error "TODO"
 
-that takes as input an expression and returns a world-transformer that
-returns a value. Yes, right now, the transformer doesnt really transform
-the world, but we will use the monad nevertheless as later, the world may
-change, when we add exceptions and such.
+2. Using the `bitAdder` circuit as a model, deﬁne a `bitSubtractor` 
+circuit that implements this functionality and use QC to check that 
+your behaves correctly.
 
-**Hint:** The value `get` is of type `State Store Store`. Thus, to extract 
-the value of the "current store" in a variable `s` use `s <- get`.
-
-> evalE (Var x)      = error "TBD"
-> evalE (Val v)      = error "TBD" 
-> evalE (Op o e1 e2) = error "TBD"
-
-
-Statement Evaluator
--------------------
-
-Next, write a function
-
-> evalS :: Statement -> State Store ()
-
-that takes as input a statement and returns a world-transformer that
-returns a unit. Here, the world-transformer should in fact update the input
-store appropriately with the assignments executed in the course of
-evaluating the `Statement`.
-
-**Hint:** The value `put` is of type `Store -> State Store ()`. 
-Thus, to "update" the value of the store with the new store `s'` 
-do `put s`.
-
-> evalS w@(While e s)    = error "TBD" 
-> evalS Skip             = error "TBD"
-> evalS (Sequence s1 s2) = error "TBD"
-> evalS (Assign x e )    = error "TBD"
-> evalS (If e s1 s2)     = error "TBD" 
-
-In the `If` case, if `e` evaluates to a non-boolean value, just skip both
-the branches. (We will convert it into a type error in the next homework.)
-Finally, write a function 
-
-> execS :: Statement -> Store -> Store
-> execS = error "TBD"
-
-such that `execS stmt store` returns the new `Store` that results
-from evaluating the command `stmt` from the world `store`. 
-**Hint:** You may want to use the library function 
-
-~~~~~{.haskell}
-execState :: State s a -> s -> s
-~~~~~
-
-When you are done with the above, the following function will 
-"run" a statement starting with the `empty` store (where no 
-variable is initialized). Running the program should print 
-the value of all variables at the end of execution.
-
-> run :: Statement -> IO ()
-> run stmt = do putStrLn "Output Store:" 
->               putStrLn $ show $ execS stmt empty
-
-Here are a few "tests" that you can use to check your implementation.
-
-> w_test = (Sequence (Assign "X" (Op Plus (Op Minus (Op Plus (Val (IntVal 1)) (Val (IntVal 2))) (Val (IntVal 3))) (Op Plus (Val (IntVal 1)) (Val (IntVal 3))))) (Sequence (Assign "Y" (Val (IntVal 0))) (While (Op Gt (Var "X") (Val (IntVal 0))) (Sequence (Assign "Y" (Op Plus (Var "Y") (Var "X"))) (Assign "X" (Op Minus (Var "X") (Val (IntVal 1))))))))
-
-> w_fact = (Sequence (Assign "N" (Val (IntVal 2))) (Sequence (Assign "F" (Val (IntVal 1))) (While (Op Gt (Var "N") (Val (IntVal 0))) (Sequence (Assign "X" (Var "N")) (Sequence (Assign "Z" (Var "F")) (Sequence (While (Op Gt (Var "X") (Val (IntVal 1))) (Sequence (Assign "F" (Op Plus (Var "Z") (Var "F"))) (Assign "X" (Op Minus (Var "X") (Val (IntVal 1)))))) (Assign "N" (Op Minus (Var "N") (Val (IntVal 1))))))))))
-
-As you can see, it is rather tedious to write the above tests! They
-correspond to the code in the files `test.imp` and `fact.imp`. When you are
-done, you should get
-
-~~~~~{.haskell}
-ghci> run w_test
-Output Store:
-fromList [("X",IntVal 0),("Y",IntVal 10)]
-
-ghci> run w_fact
-Output Store:
-fromList [("F",IntVal 2),("N",IntVal 0),("X",IntVal 1),("Z",IntVal 2)]
-~~~~~
-
-Problem 3: A Parser for WHILE 
-=============================
-
-It is rather tedious to have to specify individual programs as Haskell
-values. For this problem, you will use parser combinators to build a parser
-for the WHILE language from the previous problem.
-
-Parsing Constants
------------------
-
-First, we will write parsers for the `Value` type
-
-> valueP :: Parser Value
-> valueP = intP <|> boolP
-
-To do so, fill in the implementations of
-
-> intP :: Parser Value
-> intP = error "TBD" 
-
-Next, define a parser that will accept a 
-particular string `s` as a given value `x`
-
-> constP :: String -> a -> Parser a
-> constP s x = error "TBD"
-
-and use the above to define a parser for boolean values 
-where `"true"` and `"false"` should be parsed appropriately.
-
-> boolP :: Parser Value
-> boolP = error "TBD"
-
-Continue to use the above to parse the binary operators
-
-> opP :: Parser Bop 
-> opP = error "TBD"
- 
-
-Parsing Expressions 
--------------------
-
-Next, the following is a parser for variables, where each 
-variable is one-or-more uppercase letters. 
-
-> varP :: Parser Variable
-> varP = many1 upper
-
-Use the above to write a parser for `Expression` values
-
-> exprP :: Parser Expression
-> exprP = error "TBD"
-
-Parsing Statements
-------------------
-
-Next, use the expression parsers to build a statement parser
-
-> statementP :: Parser Statement
-> statementP = error "TBD" 
-
-When you are done, we can put the parser and evaluator together 
-in the end-to-end interpreter function
-
-> runFile s = do p <- parseFromFile statementP s
->                case p of
->                  Left err   -> print err
->                  Right stmt -> run stmt
-
-When you are done you should see the following at the ghci prompt
-
-~~~~~{.haskell}
-ghci> runFile "test.imp"
-Output Store:
-fromList [("X",IntVal 0),("Y",IntVal 10)]
-
-ghci> runFile "fact.imp" 
-Output Store:
-fromList [("F",IntVal 2),("N",IntVal 0),("X",IntVal 1),("Z",IntVal 2)]
-~~~~~
+> bitSubtractor :: (Signal, [Signal]) -> ([Signal], Signal)
+> bitSubtractor = error "TODO"
 
 
+Problem: Multiplication
+-----------------------
+
+3. Using `prop_Adder_Correct` as a model, write down a QC speciﬁcation 
+for a `multiplier` circuit that takes two binary numbers of arbitrary 
+width as input and outputs their product.
+
+> prop_Multiplier_Correct ::  [Bool] -> [Bool] -> Bool
+> prop_Multiplier_Correct = error "TODO"
+
+4. Deﬁne a `multiplier` circuit and check that it satisﬁes your 
+speciﬁcation. (Looking at how adder is deﬁned will help with this, 
+but you’ll need a little more wiring. To get an idea of how the 
+recursive structure should work, think about how to multiply two 
+binary numbers on paper.)
+
+> multiplier :: ([Signal], [Signal]) -> [Signal]
+> multiplier = error "TODO"
+
+[1]: http://www.cis.upenn.edu/~bcpierce/courses/552-2008/resources/circuits.hs
 
 
