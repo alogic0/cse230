@@ -8,6 +8,7 @@ atomic units over the entire quarter. By "atomic" I mean, for example, that
 
 - [Homework #1](homeworks/Hw1.html), due Friday, 1.31.2014
 - [Homework #2](homeworks/Hw2.html), due Sunday, 2.24.2014
+- [Homework #3](homeworks/Hw3.html), due Friday, 3.7.2014
 
 <!---
 - [Homework #3](homeworks/hw3.html), due Sunday, 2.17.2014

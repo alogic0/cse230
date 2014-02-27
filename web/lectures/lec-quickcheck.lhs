@@ -9,7 +9,7 @@ title: QuickCheck: Type-directed Property Testing
 > import Data.List
 > import qualified Data.Map as M 
 > import Control.Monad.State hiding (when)
-> import Control.Applicative (<$>)
+> import Control.Applicative ((<$>), (<*>))
 
 In this lecture, we will look at [QuickCheck][1], a technique that
 cleverly exploits typeclasses and monads to deliver a powerful 
@@ -280,7 +280,7 @@ lists of distinct elements
 and then, weakening the equivalence to only hold on inputs that 
 are duplicate-free 
 
-> prop_qsort_distinct_sort :: [Int] -> Bool 
+> prop_qsort_distinct_sort :: [Int] -> Gen Prop
 > prop_qsort_distinct_sort xs = 
 >   (isDistinct xs) ==> (qsort xs == sort xs)
 
@@ -423,7 +423,7 @@ We may use these to write a property that looks like
 
 > prop_insert_ordered_vacuous' :: Int -> [Int] -> Property 
 > prop_insert_ordered_vacuous' x xs = 
->   collect (length xs) $
+>   -- collect (length xs) $
 >   classify (isOrdered xs) "ord" $
 >   classify (not (isOrdered xs)) "not-ord" $
 >   not (isOrdered xs) || isOrdered (insert x xs)
@@ -515,9 +515,14 @@ QC uses the above to define a typeclass for types for which
 random values can be generated!
 
 ~~~~~{.haskell}
+class Show a where
+  show :: a -> String
+
 class Arbitrary a where
   arbitrary :: Gen a
 ~~~~~
+
+> gimmeInts = sample' arbitrary
 
 Thus, to have QC work with (ie generate random tests for) values of type
 `a` we need only make `a` an instance of `Arbitrary` by defining an
@@ -537,6 +542,10 @@ or more simply
 ~~~~~{.haskell}
 instance (Arbitrary a, Arbitrary b) => Arbitrary (a,b) where
   arbitrary = liftM2 (,) arbitrary arbitrary
+
+do x <- mx
+   y <- my
+   return $ f x y
 ~~~~~
 
 
@@ -589,6 +598,22 @@ A second useful combinator is `elements`
 ~~~~~{.haskell}
 elements :: [a] -> Gen a
 ~~~~~
+
+fmap :: (a -> b) -> (m a) -> (m b)
+fmap f m = do x <- m 
+              return (f x)
+
+elements xs = do i <- choose (0, (length xs) - 1)
+                 return (xs !! i)
+
+elements xs = (xs !!) <$> choose (0, length xs - 1)
+
+
+oneOf     :: [Gen a] -> Gen a
+oneOf gs = do g <- elements gs
+              x <- g
+              return x
+
 
 which returns a generator that produces values drawn from the input list
 
@@ -812,29 +837,26 @@ expressions). Our generator simply chooses between randomly generated
 `Bool` and `Int` values.
 
 > instance Arbitrary Value where 
->   arbitrary = oneof [ liftM IntVal arbitrary
->                     , liftM BoolVal arbitrary ]
+>   arbitrary = oneof [ IntVal  <$> arbitrary
+>                     , BoolVal <$> arbitrary ]
 
 
 Third, we define a generator for `Expression` and `Statement` which 
 selects from the different cases.
 
-> instance Arbitrary Expression where
->   arbitrary = arbE
+> -- instance Arbitrary Expression where
+> --   arbitrary = sized arbnE
 >
-> arbE = frequency [ (1, liftM Var arbitrary)
->                  , (1, liftM Val arbitrary)
->                  , (5, liftM2 Plus  arbitrary arbitrary)
->                  , (5, liftM2 Minus arbitrary arbitrary) ]
+> -- arbE = frequency [ (1, Var   <$> arbitrary)
+> --                  , (1, Val   <$> arbitrary)
+> --                  , (5, Plus  <$> arbitrary <*> arbitrary)
+> --                  , (5, Minus <$> arbitrary <*> arbitrary) ]
 
 Finally, we need to write a generator for `WState` so that we can run 
 the *While* program from some arbitrary input configuration. 
 
 > instance (Ord a, Arbitrary a, Arbitrary b) => Arbitrary (M.Map a b) where
->   arbitrary = do xvs <- arbitrary 
->                  return $ M.fromList xvs
->   -- or, in short
->   -- arbitrary = liftM M.fromList arbitrary
+>   arbitrary = M.fromList <$> arbitrary
 
 In the above, `xvs` is a randomly generated list of key-value tuples,
 which is turned into a `Map` by the `fromList` function.
@@ -1027,12 +1049,12 @@ which will take a candidate and generate a list of *smaller* candidates
 that QC will systematically crunch through till it finds a minimally
 failing test!
 
-> -- instance Arbitrary Expression where
->   -- arbitrary = sized arbnE
+> instance Arbitrary Expression where
+>   arbitrary = sized arbnE
 >
->   -- shrink (Plus e1 e2)  = [e1, e2]
->   -- shrink (Minus e1 e2) = [e1, e2]
->   -- shrink _             = []
+>   shrink (Plus e1 e2)  = [e1, e2]
+>   shrink (Minus e1 e2) = [e1, e2]
+>   shrink _             = []
 
 Lets try it again to see if we can figure it out!
 
