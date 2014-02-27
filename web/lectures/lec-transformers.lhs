@@ -3,12 +3,12 @@ title: Monad Transformers
 ---
 
 > {-# LANGUAGE TypeSynonymInstances, FlexibleContexts, NoMonomorphismRestriction, OverlappingInstances, FlexibleInstances #-}
->
+
 > import Control.Monad.Error
 > import Control.Monad.State
 > import Control.Monad.Writer
-> import Control.Applicative ((<$>))
 > import Debug.Trace
+> import Control.Applicative 
 
 Monads Can Do Many Things
 =========================
@@ -80,7 +80,7 @@ Error Handling Via Exception Monads
 The trouble with the above is that it doesn't let us know
 *where* the divide by zero occurred. It would be nice to 
 have an *exception* mechanism where, when the error occurred,
-we could just saw `Throw x` for some value `x` which would, 
+we could just saw `throw x` for some value `x` which would, 
 like an exception go rocketing back to the top and tell us
 what the problem was.
 
@@ -88,25 +88,29 @@ If you think for a moment, you'll realize this is but a small
 tweak on the `Maybe` type; all we need is to jazz up the 
 `Nothing` constructor so that it carries the exception value.
 
-> data Exc a = Raise  String
+> data Exc a = Exn  String
 >            | Result a
 >            deriving (Show)
 
-Here the `Raise` is like `Nothing` but it carries a string 
+Here the `Exn` is like `Nothing` but it carries a string 
 denoting what the exception was. We can make the above a 
 `Monad` much like the `Maybe` monad.
 
 > instance Monad Exc where
->   (Raise s ) >>= _ = Raise s
+>   (Exn s ) >>= _ = Exn s
 >   (Result x) >>= f = f x
 >   return           = Result 
 
+> instance Functor Exc where
+>   fmap f (Exn s)  = Exn s
+>   fmap f (Result x) = Result (f x) 
+
 **Throwing Exceptions**
 
-Let's write a function to `throwErrorExc` an exception 
+Let's write a function to `throw` an exception 
 
 ~~~~~{.haskell}
-throwErrorExc = Raise
+throw = Exn
 ~~~~~
 
 and now, we can use our newly minted monad to write 
@@ -117,7 +121,7 @@ a better exception throwing evaluator
 > evalExc (Div x y) = do n <- evalExc x
 >                        m <- evalExc y
 >                        if m == 0 
->                          then throwErrorExc  $ errorS y m 
+>                          then throw  $ errorS y m 
 >                          else return $ n `div` m
 
 where the sidekick `errorS` generates the error string. 
@@ -134,7 +138,7 @@ ghci> evalExc ok
 Result 42
 
 ghci> evalExc err
-Raise "Error dividing by Div (Val 2) (Val 3) = 0"
+Exn "Error dividing by Div (Val 2) (Val 3) = 0"
 ~~~~~
 
 
@@ -145,22 +149,22 @@ could gracefully *catch* them as well. For example, wouldn't it be nice if
 we could write a function like this:
 
 > evalExcc ::  Expr -> Exc (Maybe Int)
-> evalExcc e = catchErrorExc (liftM Just (evalExc e)) $ \err -> 
+> evalExcc e = tryCatch (Just <$> evalExc e) $ \err -> 
 >                return (trace ("Caught Error: " ++ err) Nothing)
 
 Thus, in `evalExcc` we have just *caught* the exception to return a `Maybe` value
 in the case that something went wrong. Not the most sophisticated form of
 error handling, but you get the picture.
 
-**Exercise** What do you think the *type* of `catchErrorExc` should be?
+**Exercise** What do you think the *type* of `tryCatch` should be?
 
 
-> catchErrorExc :: Exc a -> (String -> Exc a) -> Exc a
+> tryCatch :: Exc a -> (String -> Exc a) -> Exc a
 
 And next, lets write it!
 
-> catchErrorExc (Raise  err) f = f err
-> catchErrorExc r@(Result _) _ = r 
+> tryCatch (Exn  err) f = f err
+> tryCatch r@(Result _) _ = r 
 
 And now, we can run it of course...
 
@@ -228,7 +232,7 @@ Now, we can write a profiling evaluator
 >                       return (n `div` m)
 
 <!--                         if m == 0 
-                         then throwErrorExc "AAARRCHGGG!!" 
+                         then throw "AAARRCHGGG!!" 
                          else do {tickST; return (n `div` m)}
 
   -->
@@ -327,15 +331,15 @@ the special features. For example, the notion of an
 *exception monad* is captured by the typeclass
 
 > class Monad m => MonadExc m where
->   throwErrorExc :: String -> m a 
+>   throw :: String -> m a 
 
 which corresponds to monads that are also equipped with 
-an appropriate `throwErrorExc` function (you can add a `catch` 
+an appropriate `throw` function (you can add a `catch` 
 function too, if you like!) Indeed, we can make `Exc` an
 instance of the above by
 
 > instance MonadExc Exc where 
->   throwErrorExc = Raise
+>   throw = Exn
 
 I urge you to directly enter the body of `evalExc` above into 
 GHCi and see what type is inferred for it!
@@ -372,11 +376,11 @@ quite easily
 >                         m <- evalMega y
 >                         tickST
 >                         if m == 0 
->                           then throwErrorExc $ errorS y m 
+>                           then throw $ errorS y m 
 >                           else return $ n `div` m
 
 Note that it is simply the combination of the two evaluators
-from before -- we use the `throwErrorExc` from `evalExc` and the 
+from before -- we use the `throw` from `evalExc` and the 
 `tickST` from `evalST`. Meditate for a moment on the type of 
 above evaluator; note that it works with *any monad* that 
 is both a exception- and a state- monad! Indeed, if, as I 
@@ -443,14 +447,14 @@ First, we show the transformer output is a monad:
 >   return x = promote $ return x 
 >   p >>= f  = MkExc $ strip p >>= r 
 >      where r (Result x)    = strip  $ f x
->            r (Raise  s)    = return $ Raise s
+>            r (Exn  s)    = return $ Exn s
 >            strip (MkExc m) = m
 
 and next we ensure that the transformer is an 
-exception monad by equipping it with `throwErrorExc`
+exception monad by equipping it with `throw`
 
 > instance Monad m => MonadExc (ExcT m) where
->   throwErrorExc s = MkExc $ return $ Raise s
+>   throw s = MkExc $ return $ Exn s
 
 **A Transformer For State**
 
@@ -507,7 +511,7 @@ the exception-transformer is *also* a
 state-manipulating monad.
 
 > instance MonadExc m => MonadExc (STT m) where
->   throwErrorExc s = promote (throwErrorExc s)
+>   throw s = promote (throw s)
 
 > instance MonadST m => MonadST (ExcT m) where
 >   getST = promote getST
@@ -515,7 +519,7 @@ state-manipulating monad.
 >   runStateST (MkExc m) s = MkExc $ do (ex, s') <- runStateST m s
 >                                       case ex of
 >                                         Result x  -> return $ Result (x, s')
->                                         Raise err -> return $ Raise err 
+>                                         Exn err -> return $ Exn err 
 
 Step 5: Whew! Put together and Run
 ----------------------------------
@@ -534,7 +538,7 @@ which we can run as
 
 ~~~~~{.haskell}
 ghci> d1
-Raise:Error dividing by Div (Val 2) (Val 3) = 0
+Exn:Error dividing by Div (Val 2) (Val 3) = 0
 
 ghci> evalStEx ok
 Count: 2
@@ -542,21 +546,21 @@ Result 42
 
 ghci> evalStEx err
 Count: 2
-Raise "Error dividing by Div (Val 2) (Val 3) = 0"
+Exn "Error dividing by Div (Val 2) (Val 3) = 0"
 
 ghci> evalExSt ok
 Count:2
 Result: 42
 
 ghci> evalExSt err
-Raise:Error dividing by Div (Val 2) (Val 3) = 0
+Exn:Error dividing by Div (Val 2) (Val 3) = 0
 ~~~~~
 
 where the rendering functions are
 
 > instance Show a => Show (STT Exc a) where
 >   show (MkSTT f) = case (f 0) of 
->                      Raise s         -> "Raise:" ++ s ++ "\n"
+>                      Exn s         -> "Exn:" ++ s ++ "\n"
 >                      Result (v, cnt) -> "Count:" ++ show cnt ++ "\n" ++
 >                                         "Result: " ++ show v ++ "\n"
 >
