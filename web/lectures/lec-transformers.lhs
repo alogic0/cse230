@@ -63,6 +63,17 @@ be used to avoid ugly case-split-staircase-hell.
 >                            then Nothing
 >                            else return (n `div` m)
 
+> evalExn (Val n)   = return n
+> evalExn (Div x y) = do n <- evalExn x
+>                        m <- evalExn y
+>                        if m == 0 
+>                            then throwExn "EEKES DIVIDED BY ZERO" 
+>                            else return (n `div` m)
+
+> throwExn = Exn
+
+
+
 which behaves thus
 
 ~~~~~{.haskell}
@@ -91,6 +102,10 @@ tweak on the `Maybe` type; all we need is to jazz up the
 > data Exc a = Exn  String
 >            | Result a
 >            deriving (Show)
+
+
+
+
 
 Here the `Exn` is like `Nothing` but it carries a string 
 denoting what the exception was. We can make the above a 
@@ -149,8 +164,8 @@ could gracefully *catch* them as well. For example, wouldn't it be nice if
 we could write a function like this:
 
 > evalExcc ::  Expr -> Exc (Maybe Int)
-> evalExcc e = tryCatch (Just <$> evalExc e) $ \err -> 
->                return (trace ("Caught Error: " ++ err) Nothing)
+> evalExcc e = tryCatch (Just <$> (evalExc e)) $ \err -> 
+>                     return (trace ("oops, caught an exn" ++ err) Nothing)
 
 Thus, in `evalExcc` we have just *caught* the exception to return a `Maybe` value
 in the case that something went wrong. Not the most sophisticated form of
@@ -162,11 +177,8 @@ QUIZ
 What should the **type** of `tryCatch` be?
 
 a. `Exc a -> (a -> Exc b) -> Exc b`
-b. `Exc a -> Exc a`
-c. `Exc a`
-d. `Exc a -> (String -> Exc a) -> Exc a`
+d. `Exc a -> (String -> a) -> a`
 e. None of the above
-
 
 ~~~~~{.haskell}
 
@@ -175,6 +187,7 @@ e. None of the above
 
 
 ~~~~~
+
 
 
 > tryCatch :: Exc a -> (String -> Exc a) -> Exc a
