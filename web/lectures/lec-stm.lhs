@@ -148,6 +148,8 @@ Uses of `MVar`
 3. An MVar () is a lock; takeMVar acquires the lock and putMVar releases it again. 
    An MVar used in this way can protect shared mutable state or critical sections.
 
+
+
 5. MVars: BankAccount/Deposit 
 =============================
 
