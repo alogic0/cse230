@@ -1,6 +1,7 @@
 
 
 \begin{code}
+import Control.Applicative ((<$>))
 import Control.Concurrent hiding (readMVar)
 import Control.Concurrent.STM
 import Control.Monad
@@ -17,6 +18,16 @@ import Data.Time
 import Text.Printf
 \end{code}
 
+
+
+
+\begin{code}
+moas = do { p <- newIORef 10; incr p; s <- readIORef p; putStrLn s}
+
+incr p = do v <- readIORef p      -- v  = *p
+            writeIORef p (v + 1)  -- *p = v + 1
+\end{code}
+
 1. Mutable State Via IORef
 ==========================
 
@@ -26,10 +37,10 @@ newtype AccountIO = AIO (IORef Int)
 newAccountIO ::  Int -> IO AccountIO
 newAccountIO n 
   | n >= 0 
-  = liftM AIO (newIORef n)
+  = AIO <$> newIORef n
   | otherwise
   = do putStrLn "Do I look like a communist?!!"
-       liftM AIO (newIORef 0)
+       AIO <$> newIORef 0
 
 showBalanceIO ::  AccountIO -> IO ()
 showBalanceIO (AIO r) 
@@ -45,12 +56,15 @@ depositIO (AIO r) n
 
 main1 :: IO ()
 main1 = do a <- newAccountIO 0
-           mapM_ (depositIO a) (replicate 5 10) 
+           forM_ (replicate 5 10) $ 
+             depositIO a
            showBalanceIO a   -- should be $50
 \end{code}
 
 2. Forking A Thread 
 ===================
+
+forever act = do {act ; forever act}
 
 \begin{code}
 main2 = do hSetBuffering stdout NoBuffering
@@ -95,9 +109,9 @@ depositIO' (AIO r) n
 
 main4 ::  IO ()
 main4 = do a <- newAccountIO 0
-           -- mapM_ (forkIO . depositIO' a) (replicate 5 10) 
+           mapM_ (forkIO . depositIO' a) (replicate 5 10) 
            -- threadDelay (5 * 10^6)   -- shutdown after 1 sec
-           asyncMapM (depositIO' a) (replicate 5 10) 
+           -- asyncMapM (depositIO' a) (replicate 5 10) 
            showBalanceIO a          -- should be $50 but isn't due to DATA RACES!
 \end{code}
 
@@ -160,10 +174,10 @@ newtype AccountMV = AMV (MVar Int)
 newAccountMV :: Int -> IO AccountMV
 newAccountMV n 
   | n >= 0 
-  = liftM AMV (newMVar n)
+  = AMV <$> newMVar n
   | otherwise
   = do putStrLn "Do I look like a communist?!!"
-       liftM AMV (newMVar 0)
+       AMV <$> newMVar 0
 
 readMVar :: MVar a -> IO a
 readMVar r = do x <- takeMVar r     -- read the value ...
@@ -247,9 +261,12 @@ timeDownload url = do (page, time) <- timeit $ getURL url
 
 -- | Reading ALL the URLs in sequence
 
-foo = do ass <- mapM (async . timeDownload) urls
-         x   <- mapM wait ass
-         return ()
+-- foo = do asyncs <- mapM (async . timeDownload) urls
+--          x      <- mapM wait asyncs
+--          return ()
+
+
+foo = asyncMapM timeDownload urls
 
 main6 = do (_ , time) <- timeit foo
            printf "TOTAL download time: %.2fs\n" time
@@ -265,10 +282,10 @@ main7' = do (_, time) <- timeit $ asyncMapM timeDownload urls
 
 -- mapM      :: (a -> IO b) -> [a] -> IO [b]
 
--- asyncMapM :: (a -> IO b) -> [a] -> IO [b]
--- asyncMapM f xs = do ass <- mapM f xs
---                     rs  <- mapM wait ass
---                     return rs
+asyncMapM :: (a -> IO b) -> [a] -> IO [b]
+asyncMapM f xs = do ass <- mapM (async . f) xs
+                    rs  <- mapM wait ass
+                    return rs
 
 -- asyncMapM :: (a -> IO b) -> [a] -> IO [b]
 -- asyncMapM f xs = mapM (async . f) xs >>= mapM wait
@@ -294,7 +311,9 @@ asyncMapM f xs = mapM (async . f) xs >>= mapM wait
 main8 = do (_, time) <- timeit $ mapM timeDownload urls
            printf "TOTAL download time: %.2fs\n" time
 
-
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+---------------------------------------------------------------------
 
 synchronize :: Lock -> IO a -> IO a
 
