@@ -22,7 +22,10 @@ import Text.Printf
 
 
 \begin{code}
-moas = do { p <- newIORef 10; incr p; s <- readIORef p; putStrLn s}
+moas = do { p <- newIORef 10; 
+            incr p; 
+            s <- readIORef p; 
+            putStrLn $ show s}
 
 incr p = do v <- readIORef p      -- v  = *p
             writeIORef p (v + 1)  -- *p = v + 1
@@ -110,8 +113,7 @@ depositIO' (AIO r) n
 main4 ::  IO ()
 main4 = do a <- newAccountIO 0
            mapM_ (forkIO . depositIO' a) (replicate 5 10) 
-           -- threadDelay (5 * 10^6)   -- shutdown after 1 sec
-           -- asyncMapM (depositIO' a) (replicate 5 10) 
+           threadDelay (5 * 10^6)   -- shutdown after 1 sec
            showBalanceIO a          -- should be $50 but isn't due to DATA RACES!
 \end{code}
 
@@ -150,7 +152,7 @@ data MVar a
     putMVar	     :: MVar a -> a -> IO ()
 ~~~~~
 
-Uses of `MVar`
+**Uses of `MVar`**
 
 1. An MVar is a useful container for shared mutable state, e.g. common design pattern 
    where threads need read and write access to some state, is to represent the state 
@@ -161,6 +163,7 @@ Uses of `MVar`
  
 3. An MVar () is a lock; takeMVar acquires the lock and putMVar releases it again. 
    An MVar used in this way can protect shared mutable state or critical sections.
+
 
 5. MVars: BankAccount/Deposit 
 =============================
@@ -222,7 +225,8 @@ Function to execute an IO action `async`-hronously
 \begin{code}
 async :: IO a -> IO (Async a)
 async action = do m <- newEmptyMVar
-                  forkIO (action >>= putMVar m) 
+                  forkIO $ do x <- action 
+                              putMVar m x
                   return (Async m)
 \end{code}
 
@@ -231,169 +235,227 @@ Function to `wait` for the result of `Async` computation
 \begin{code}
 wait :: Async a -> IO a
 wait (Async m) = readMVar m
+\end{code}
 
--- | Application: Download a bunch of URLs asynchronously,
--- that is, without blocking on each other
+**Application:** Download a bunch of URLs asynchronously, **without blocking** on each other
 
-{- To demo the below, build with:
-   
-        $ ghc --make -threaded lec-stm.hs
-   
-   Run with:
+To demo the below, build with:
+  
+~~~~~{.haskell}
+    $ ghc --make -threaded lec-stm.hs
+~~~~~
 
+Run with:
+
+~~~~~{.haskell}
         $ ./lec-stm 6 +RTS -n4
         $ ./lec-stm 7 +RTS -n4
         $ ./lec-stm 8 +RTS -n4
- -}
+~~~~~
 
--- | A list of URLs
+A list of URLs
 
+\begin{code}
 urls = [ "http://www.google.com"
        , "http://www.buzzfeed.com"
        , "http://www.reddit.com/r/haskell"
        , "http://www.nytimes.com"
        ]
+\end{code}
 
--- | Reading a SINGLE URL
+Reading a SINGLE URL
 
+\begin{code}
 timeDownload url = do (page, time) <- timeit $ getURL url
                       printf "downloaded: %s (%d bytes, %.2fs)\n" url (B.length page) time
+\end{code}
 
--- | Reading ALL the URLs in sequence
+Reading ALL the URLs **in sequence** (i.e. a single thread)
 
--- foo = do asyncs <- mapM (async . timeDownload) urls
---          x      <- mapM wait asyncs
---          return ()
-
-
-foo = asyncMapM timeDownload urls
-
-main6 = do (_ , time) <- timeit foo
+\begin{code}
+main6 = do (_ , time) <- timeit $ amapM timeDownload urls 
            printf "TOTAL download time: %.2fs\n" time
+\end{code}
 
--- | Reading ALL the URLs with `async` 
+Reading ALL the URLs **asynchronously** with `async` 
 
-main7 = do (_, time) <- timeit $ (mapM (async . timeDownload ) urls >>= mapM wait)
+mapM          :: (a -> IO b) -> [a] -> IO [b]
+timeDownload  :: URL -> IO b
+urls          :: [URL]
+mapM timeDownload urls :: IO [b]
+tasks         :: [b]
+
+async         :: IO a -> IO (Async a)
+
+async . timeDownload              :: URL -> IO (Async b)
+mapM (async . timeDownload) urls  :: IO [Async b]
+
+tasks :: [Async b]
+
+mapM timeDownload urls :: IO [b]
+tasks :: [MVar ...]
+tasks :: [(IO ???, Double)]
+
+mapM          :: (a -> IO b) -> [a] -> IO [b]
+mapM f []     = return []
+mapM f (x:xs) = do y  <- f x
+                   ys <- mapM f xs
+                   return (y : ys)
+
+
+-- asyncMapM      :: (a -> IO b) -> [a] -> IO [b]
+\begin{code}
+amapM f xs = mapM (async . f) xs >>= mapM wait
+\end{code}
+
+
+\begin{code}
+foo  = do tasks <- mapM (async . timeDownload) urls 
+          mapM wait tasks 
+
+
+
+
+main7 = do (_, time) <- timeit $ foo 
            printf "TOTAL download time: %.2fs\n" time
+\end{code}
 
-main7' = do (_, time) <- timeit $ asyncMapM timeDownload urls
-            printf "TOTAL download time: %.2fs\n" time
+Spawn-then-wait in parallel is a general pattern; lets **generalize** into `asyncMapM`
 
-
--- mapM      :: (a -> IO b) -> [a] -> IO [b]
-
-asyncMapM :: (a -> IO b) -> [a] -> IO [b]
-asyncMapM f xs = do ass <- mapM (async . f) xs
-                    rs  <- mapM wait ass
-                    return rs
-
--- asyncMapM :: (a -> IO b) -> [a] -> IO [b]
--- asyncMapM f xs = mapM (async . f) xs >>= mapM wait
-
-
-
-
-
-
-
--- | Generalize into `asyncMapM`
-
+\begin{code}
 asyncMapM :: (a -> IO b) -> [a] -> IO [b]
 asyncMapM f xs = mapM (async . f) xs >>= mapM wait
+\end{code}
+
+**Note:** *Exact* type as `mapM` -- so you can literally just replace to get parallelism.
+
+Reading ALL URLs with `asyncMapM`
 
 
-
-
-
-
--- | Reading ALL URLs with `asyncMapM`
-
+\begin{code}
 main8 = do (_, time) <- timeit $ mapM timeDownload urls
            printf "TOTAL download time: %.2fs\n" time
-
----------------------------------------------------------------------
----------------------------------------------------------------------
----------------------------------------------------------------------
-
-synchronize :: Lock -> IO a -> IO a
+\end{code}
 
 
-type Lock = MVar ()
+7. Java-style Synchronization via MVars
+=======================================
 
+Next, lets see how `MVars` give us Java style `synchronize`, 
+as a simple function, no need to extend the language.
+
+**Key idea:** Execute an action **while holding lock**
+
+MVars as Locks
+--------------
+
+\begin{code}
+
+type Lock = MVar () 
+\end{code}
+
+Acquiring Locks
+---------------
+
++ Just **take** the `MVar`s contents! 
++ Subsequent calls to `acquire` will block...
+
+\begin{code}
 acquire l = takeMVar l
-release l = putMVar l ()
+\end{code}
 
+
+Releasing Locks
+---------------
+
++ Just **put back** the `MVar`s contents!
++ Subsequent calls to `acquire` will now get unblocked...
+
+\begin{code}
+release l = putMVar l  () 
+\end{code}
+
+synchronized (lock) { statement }
+
+synchronize :: Lock -> IO a -> IO a 
+synchronize lock act = do acquire lock
+                           x <- act
+                           release lock
+                           return x
+
+Synchronized "Blocks"
+---------------------
+
+Just a simple function!
+
+\begin{code}
+synchronize       :: Lock -> IO a -> IO a
 synchronize l act = do acquire l
                        x <- act
                        release l
                        return x
+\end{code}
+
+**Exercise** Can you think of a bug in the above? How would you fix it?
 
 
+8. "Synchronized" Bank Accounts
+===============================
 
 
+A `synchronize`d deposit that prevents races...
 
-
------------------------------------------------------------
--- | 7. Lock/Synchronize Via MVars ------------------------
------------------------------------------------------------
-
--- `synchronize` is NOT a keyword, JUST a function...
-
--- synchronize :: MVar b -> IO a -> IO a
--- synchronize lock action 
---    = do x <- takeMVar lock
---         z <- action
---         putMVar lock x 
---         return z
-
-
--- A `synchronize` deposit that prevents races...
-
-
+\begin{code}
 main9 :: IO ()
 main9 = do 
   l <- newMVar ()                                           -- global lock, with dummy unit value
   a <- newAccountIO 0                                       -- create the account
   asyncMapM (synchronize l . depositIO' a) (replicate 5 10) -- dump money with synchronize 
   showBalanceIO a                                           -- will be $50
+\end{code}
 
+**Exercise:** What happens if you comment out the `synchronize l` ?
 
+Btw, why are we using `asyncMapM`  not something like `forkMapM`? 
 
+Try to use this instead of `asyncMapM` above and see if you can figure it out. 
 
--- What happens if you comment out the `synchronize l` ?
-
--- | Btw, why are we using asyncMapM  not something like `forkMapM`? 
--- Try to use this instead of asyncMapM above and see if you can figure it out. 
--- Hint: after forking, parent does not wait for children to finish...
-
+\begin{code}
 forkMapM :: (a -> IO ()) -> [a] -> IO ()
 forkMapM f xs = mapM_ (forkIO . f) xs
+\end{code}
 
------------------------------------------------------------
--- | 8. Zero Concurrency Above, because GLOBAL Lock -------
------------------------------------------------------------
+**Hint:** after forking, parent does not wait for children to finish...
 
--- AccountMV has a local lock per account, lets simulate with explicit lock.
 
+9. GLOBAL Locks means Zero Concurrency 
+======================================
+
+Pretty silly if the **entire** bank froze up to handle
+a **single** customer!
+
+
+`AccountMV` has a local lock per account, lets simulate 
+with explicit lock.
+
+\begin{code}
 data AccountL = AL { money :: IORef Int 
                    , lock  :: MVar ()   
                    }
+\end{code}
 
--- | Create a new "locked" account
+Create a new "locked" account
+
+\begin{code}
+newAccountL   :: Int -> IO AccountL
 newAccountL n = do m     <- newIORef n
                    l     <- newMVar ()
                    return $ AL m l
-
-
--- newAccountL n = liftM2 AL (newIORef n) (newMVar ())
--- newAccountL n = AL <$> (newIORef n) <*> (newMVar ())
-
 
 showBalanceL ::  AccountL -> IO ()
 showBalanceL (AL r _) 
   = do bal <- readIORef r
        putStrLn $ "Current Balance: " ++ show bal
-
 
 depositL ::  AccountL -> Int -> IO ()
 depositL (AL r _) n
@@ -405,65 +467,95 @@ depositL (AL r _) n
          then putStrLn $ "Sorry, cannot withdraw. Balance below " ++ show n 
          else do putStrLn $ printf "Thread id = %s write bal = %d" (show i) (bal + n)
                  writeIORef r (bal + n)
+\end{code}
 
--- Make sure we use the *same* lock...
+Now, lets do concurrent deposits, 
+but make sure we use the *same* lock...
 
+\begin{code}
 main10 :: IO ()
 main10 = do 
   a <- newAccountL 0                                              -- create the account
   asyncMapM (synchronize (lock a) . depositL a) (replicate 5 10)  -- dump money with synchronize 
   showBalanceL a                                                  -- will be $50
+\end{code}
 
---------------------------------------------------------------------
--- | Transferring between accounts ---------------------------------
---------------------------------------------------------------------
 
+10. Transferring between accounts
+=================================
+
+\begin{code}
 transferL         ::  AccountL -> AccountL -> Int -> IO ()
 transferL a1 a2 n = do depositL a1 $ 0 - n                  -- withdrawn n from a1
                        depositL a2 $ n                      -- deposit   n into a2
+\end{code}
 
--- | `syncTransfer` will prevent races ... but cause deadlocks 
+`syncTransfer` will prevent races ... but cause deadlocks 
 
+\begin{code}
 syncTransfer         ::  AccountL -> AccountL -> Int -> IO ()
 syncTransfer a1 a2 n = 
   synchronize (lock a1) $ 
     synchronize (lock a2) $ 
       transferL a1 a2 n
+\end{code}
 
--- | Can use a GLOBAL lock as in `main9` but zero concurrency ... bit pointless.
 
------------------------------------------------------------
--- | 9. STM -----------------------------------------------
------------------------------------------------------------
 
-{-  New type of trans-action
+Can use a GLOBAL lock as in `main9` but zero concurrency ...
+
+11. STM: Software Transactions
+==============================
+
  
-        data STM a                          -- transactions that return an `a`
+New type of trans-action
 
-    Executed via a special function call
+~~~~~{.haskell}
+  data STM a    -- transactions that return an `a`
+~~~~~
 
-        atomically :: STM a -> IO a
+Executed via a special function call
 
-    Only shared state is a special kind of variable
+~~~~~{.haskell}
+  atomically :: STM a -> IO a
+~~~~~
 
-        data TVar a                         -- transactional variables storing an `a`
+Only shared state is a special kind of transactional 
+variable storing an `a`
 
-    With the operations,
+~~~~~{.haskell}
+  data TVar a
+~~~~~
 
-        newTVar :: a -> STM (TVar a)        -- create a TVar
+With special operations, to **create** a `TVar`
 
-        readTVar :: TVar a -> STM a         -- read a TVar
+~~~~~{.haskell}
+  newTVar :: a -> STM (TVar a)
+~~~~~
 
-        writeTVar :: TVar a -> a -> STM ()  -- write a TVar
+to **read** a `TVar` 
 
-    Just like operations on IORef but with STM actions instead
+~~~~~{.haskell}
+  readTVar :: TVar a -> STM a
+~~~~~
 
- -} 
+and, to **write** a `TVar`
 
+~~~~~{.haskell}
+  writeTVar :: TVar a -> a -> STM ()
+~~~~~
+
+Just like operations on `IORef` but with `STM` actions instead
+
+
+Lets make a **transactional** account
+
+\begin{code}
 newtype AccountT = AT (TVar Int) 
 
 newAccountT ::  Int -> STM AccountT
-newAccountT n = liftM AT (newTVar n)
+newAccountT n = AT <$> newTVar n
+
 
 showBalanceT ::  AccountT -> IO ()
 showBalanceT (AT r) 
@@ -481,22 +573,26 @@ main11 :: IO ()
 main11 = do a <- atomically $ newAccountT 0
             asyncMapM (atomically . depositT a) (replicate 5 10) 
             showBalanceT a   -- should be $50
+\end{code}
 
+Transactions Compose
+====================
 
------------------------------------------------------------------------
--- | Transactions Compose! --------------------------------------------
------------------------------------------------------------------------
+Trivial to compose actions without worrying about *deadlock* or *race*
 
+\begin{code}
 transferT         ::  AccountT -> AccountT -> Int -> STM ()
 transferT a1 a2 n = do depositT a1 $ 0 - n                  -- withdrawn n from a1
                        depositT a2 $ n                      -- deposit   n into a2
+\end{code}
 
+No need for **any** synchronization, just say `atomic` 
 
--- | No need for ANY synchronization, just say the word!
-
+\begin{code}
 atomicTransferT a1 a2 n = atomically $ transferT a1 a2 n
+\end{code}
 
-
+\begin{code}
           
 -----------------------------------------------------------
 -- | Top-level Driver -------------------------------------
