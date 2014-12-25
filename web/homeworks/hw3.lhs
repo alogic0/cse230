@@ -24,7 +24,7 @@ functions you write. Submit your homework by sending this file,
 filled in appropriately, to cse230@goto.ucsd.edu with the subject
 “HW3”; you will receive a confirmation email after submitting. 
 Please note that this address is unmonitored; if you have any 
-questions about the assignment, email Pat at prondon@cs.ucsd.edu.
+questions about the assignment, post to Piazza.
 
 > {-# LANGUAGE TypeSynonymInstances, FlexibleContexts, NoMonomorphismRestriction, OverlappingInstances, FlexibleInstances #-}
 

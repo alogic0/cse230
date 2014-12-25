@@ -1,6 +1,7 @@
 
 
 \begin{code}
+import Control.Applicative ((<$>))
 import Control.Concurrent hiding (readMVar)
 import Control.Concurrent.STM
 import Control.Monad
@@ -17,6 +18,19 @@ import Data.Time
 import Text.Printf
 \end{code}
 
+
+
+
+\begin{code}
+moas = do { p <- newIORef 10; 
+            incr p; 
+            s <- readIORef p; 
+            putStrLn $ show s}
+
+incr p = do v <- readIORef p      -- v  = *p
+            writeIORef p (v + 1)  -- *p = v + 1
+\end{code}
+
 1. Mutable State Via IORef
 ==========================
 
@@ -26,10 +40,10 @@ newtype AccountIO = AIO (IORef Int)
 newAccountIO ::  Int -> IO AccountIO
 newAccountIO n 
   | n >= 0 
-  = liftM AIO (newIORef n)
+  = AIO <$> newIORef n
   | otherwise
   = do putStrLn "Do I look like a communist?!!"
-       liftM AIO (newIORef 0)
+       AIO <$> newIORef 0
 
 showBalanceIO ::  AccountIO -> IO ()
 showBalanceIO (AIO r) 
@@ -45,12 +59,15 @@ depositIO (AIO r) n
 
 main1 :: IO ()
 main1 = do a <- newAccountIO 0
-           mapM_ (depositIO a) (replicate 5 10) 
+           forM_ (replicate 5 10) $ 
+             depositIO a
            showBalanceIO a   -- should be $50
 \end{code}
 
 2. Forking A Thread 
 ===================
+
+forever act = do {act ; forever act}
 
 \begin{code}
 main2 = do hSetBuffering stdout NoBuffering
@@ -160,10 +177,10 @@ newtype AccountMV = AMV (MVar Int)
 newAccountMV :: Int -> IO AccountMV
 newAccountMV n 
   | n >= 0 
-  = liftM AMV (newMVar n)
+  = AMV <$> newMVar n
   | otherwise
   = do putStrLn "Do I look like a communist?!!"
-       liftM AMV (newMVar 0)
+       AMV <$> newMVar 0
 
 readMVar :: MVar a -> IO a
 readMVar r = do x <- takeMVar r     -- read the value ...
@@ -208,7 +225,8 @@ Function to execute an IO action `async`-hronously
 \begin{code}
 async :: IO a -> IO (Async a)
 async action = do m <- newEmptyMVar
-                  forkIO (action >>= putMVar m) 
+                  forkIO $ do x <- action 
+                              putMVar m x
                   return (Async m)
 \end{code}
 
@@ -255,15 +273,50 @@ timeDownload url = do (page, time) <- timeit $ getURL url
 Reading ALL the URLs **in sequence** (i.e. a single thread)
 
 \begin{code}
-main6 = do (_ , time) <- timeit $ mapM timeDownload urls 
+main6 = do (_ , time) <- timeit $ amapM timeDownload urls 
            printf "TOTAL download time: %.2fs\n" time
 \end{code}
 
 Reading ALL the URLs **asynchronously** with `async` 
 
+mapM          :: (a -> IO b) -> [a] -> IO [b]
+timeDownload  :: URL -> IO b
+urls          :: [URL]
+mapM timeDownload urls :: IO [b]
+tasks         :: [b]
+
+async         :: IO a -> IO (Async a)
+
+async . timeDownload              :: URL -> IO (Async b)
+mapM (async . timeDownload) urls  :: IO [Async b]
+
+tasks :: [Async b]
+
+mapM timeDownload urls :: IO [b]
+tasks :: [MVar ...]
+tasks :: [(IO ???, Double)]
+
+mapM          :: (a -> IO b) -> [a] -> IO [b]
+mapM f []     = return []
+mapM f (x:xs) = do y  <- f x
+                   ys <- mapM f xs
+                   return (y : ys)
+
+
+-- asyncMapM      :: (a -> IO b) -> [a] -> IO [b]
+\begin{code}
+amapM f xs = mapM (async . f) xs >>= mapM wait
+\end{code}
+
 
 \begin{code}
-main7 = do (_, time) <- timeit  $ (mapM (async . timeDownload) urls >>= mapM wait)
+foo  = do tasks <- mapM (async . timeDownload) urls 
+          mapM wait tasks 
+
+
+
+
+main7 = do (_, time) <- timeit $ foo 
            printf "TOTAL download time: %.2fs\n" time
 \end{code}
 
@@ -297,7 +350,8 @@ MVars as Locks
 --------------
 
 \begin{code}
-type Lock = MVar ()
+
+type Lock = MVar () 
 \end{code}
 
 Acquiring Locks
@@ -318,9 +372,16 @@ Releasing Locks
 + Subsequent calls to `acquire` will now get unblocked...
 
 \begin{code}
-release l = putMVar l ()
+release l = putMVar l  () 
 \end{code}
 
+synchronized (lock) { statement }
+
+synchronize :: Lock -> IO a -> IO a 
+synchronize lock act = do acquire lock
+                           x <- act
+                           release lock
+                           return x
 
 Synchronized "Blocks"
 ---------------------
@@ -439,6 +500,8 @@ syncTransfer a1 a2 n =
       transferL a1 a2 n
 \end{code}
 
+
+
 Can use a GLOBAL lock as in `main9` but zero concurrency ...
 
 11. STM: Software Transactions
@@ -491,7 +554,8 @@ Lets make a **transactional** account
 newtype AccountT = AT (TVar Int) 
 
 newAccountT ::  Int -> STM AccountT
-newAccountT n = liftM AT (newTVar n)
+newAccountT n = AT <$> newTVar n
+
 
 showBalanceT ::  AccountT -> IO ()
 showBalanceT (AT r) 

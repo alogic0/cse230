@@ -43,28 +43,66 @@ informally figure out how we can infer their types *automatically*.
 
 ~~~~~{.haskell}
 -- Example 1
-pos = \x -> if x `gtI` 0 then True else False
+pos = \x -> if ((gtI x) 0) then True else False
 ~~~~~
+
+x :: TX     // TX := Int
+pos :: Int -> Bool 
+
+
 
 ~~~~~{.haskell}
 -- Example 2
 id  = \x -> x 
 ~~~~~
 
+x :: TX
+id :: forall a. a -> a
+
+
 ~~~~~{.haskell}
 -- Example 3
 goo = \x -> (\y -> x) 
 ~~~~~
 
+
+x :: TX
+y :: TY
+goo :: forall TX, TY. TX -> TY -> TX
+
+
+
 ~~~~~{.haskell}
 -- Example 4
-compose = \f -> \g -> \x -> f (g (x)) 
+compose = \f -> \g -> \x -> f (g x)) 
 ~~~~~
+
+f :: TF     // TF  := TFi -> TFo
+g :: TG     // TG  := TGi -> TGo
+x :: TX 
+            // TX  := TGi
+            // TFi := TGo
+  
+  forall a b c. (b -> c) -> (a -> b) -> a -> c 
+
+
 
 ~~~~~{.haskell}
 -- Example 5
-max = \x -> \y -> if x `gtA` y then x else y
+max = \x -> \y -> if gtA x y then x else y
 ~~~~~
+
+gtA :: forall A, B.  A -> B -> Bool
+
+gtA :: ALICE -> BOB -> Bool
+
+x :: TX // TX := ALICE 
+y :: TY // TY := BOB
+           ALICE := BOB
+
+BOB-> TY -> BOB
+
+
 
 Preliminaries
 =============
@@ -399,7 +437,7 @@ First, the easiest cases are the literals whose *base* types are
 trivially inferred.
 
 > ti _ (ELit (LInt _))  = return (empSubst, TInt)
-> ti _ (ELit (LBool _)) = return (empSubst, TInt)
+> ti _ (ELit (LBool _)) = return (empSubst, TBool)
 
 Next, consider the case of variables. Here we simply lookup the 
 environment for the scheme for the variable, and if found, create
