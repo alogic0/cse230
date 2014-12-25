@@ -1,7 +1,9 @@
+--------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-import Control.Arrow ((>>>))
-
-import Hakyll
+import           Data.Monoid (mappend)
+import           Control.Arrow ((>>>))
+import           Hakyll
+--------------------------------------------------------------------------------
 
 copyDir = do route   idRoute
              compile copyFileCompiler
@@ -23,7 +25,7 @@ main = hakyll $ do
 
     match "templates/*"   $ compile templateCompiler
     match "lectures/*"    $ myMakeHTML
-    match "slides/*"      $ myMakeHTML
+    -- match "slides/*"      $ myMakeHTML
     match "homeworks/*"   $ myMakeHTML
     match (fromList tops) $ myMakeHTML
 

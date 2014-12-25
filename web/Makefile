@@ -2,14 +2,14 @@
 SITEUSER=rjhala@login.eng.ucsd.edu
 SITEPATH=/net/cs/htdocs/classes/wi14/cse230-a/
 
-all: hakyll
-	./hakyll rebuild
+all: website
+	./website rebuild
 
-hakyll:
-	ghc --make hakyll
+website: website.hs
+	ghc --make website
 
 clean:
-	rm -rf *.hi *.o .*.swp .*.swo hakyll _site/ _cache/
+	rm -rf *.hi *.o .*.swp .*.swo website _site/ _cache/
 
 update:
 	cp css/syntax-rj.css _site/css/syntax.css

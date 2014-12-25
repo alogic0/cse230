@@ -502,7 +502,7 @@ depositT ::  AccountT -> Int -> STM ()
 depositT (AT r) n
   = do bal <- readTVar r
        if (bal + n < 0) 
-         then retry                 -- special "abort" action 
+         then retry  -- special "abort" action 
          else writeTVar r (bal + n)
 
 main11 :: IO ()
