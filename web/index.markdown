@@ -2,42 +2,33 @@
 title: Home 
 ---
 
-<!--
 ## Signup "Sheet"
 
-<iframe
-src="https://docs.google.com/forms/d/11sd-G93Zp0cv72TV5C8KGuPgxENYbR3tchLTsAYNH90/viewform?embedded=true"
-width="760" height="500" frameborder="0" marginheight="0"
-marginwidth="0">Loading...</iframe>
-
--->
+<iframe src="https://docs.google.com/forms/d/169ahxEeKmbVJJ7dbJ39R2eESAXP28jhiQwwIyceX0aE/viewform?embedded=true" width="760" height="500" frameborder="0" marginheight="0" marginwidth="0">Loading...</iframe>
 
 ## Staff
 
 + *Instructor:* Ranjit Jhala `(jhala+230@cs.ucsd.edu)`
-+ *TA:* Niki Vazou `(nvazou+230@cs.ucsd.edu)`
++ *TA:* Eric Seidel `(eseidel+230@cs.ucsd.edu)`
++ *TA:* Luke Cycon  `(lcycon+230@ucsd.edu)`
 
 ## Co-ordinates 
 
-+ *Lectures:* Tu-Th 12:30 to 1:50pm  
++ *Lectures:* Tu-Th 2:00 to 3:20pm
 + *Location:* WLH 2204
++ *SectionID:* 828335
+
 
 ## Clickers etc.
 
 + [Info](http://acms.ucsd.edu/faculty/clickers/)
-
-<!-- 
-
 + [Groups](static/groups.txt)
 + [Seating Chart](static/wlh2204.pdf)
-+ [Phone-App](http://www1.iclicker.com/mobile-polling-iclicker-go)
-
--->
 
 
 ## Office Hours
 
-- Ranjit  : Th 2-3p
+- Ranjit: Wed 2-3p
 
 ## Description
 
@@ -46,7 +37,7 @@ language ideas, including high-level programming abstractions, expressive
 type systems and program analyses. We will develop these ideas in roughly
 two parts. First, we will study various high-level programming abstractions
 through the lens of [Haskell](http://www.haskell.org), 
-a *pure functional* programming language that has been the
+a *functional* programming language that has been the
 incubator for many recent PL advances. In the second part we will
 see how the lambda calculus can be used to distill essence 
 of computation into a few powerful constructs, and we will use it 

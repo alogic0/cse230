@@ -4,36 +4,34 @@ title: Lectures
 
 **Date**     **Topic**                                          **Notes**
 --------     ----------------------------------------------     --------------
-   *1/7*     Introduction                                       [pdf][lec1] [hs][hs1] [lhs][lhs1]
-   *1/9*     (contd.)
-  *1/14*     Higher-Order Functions                             [html][lec2] [slides][lec2s] [lhs][lhs2]
-  *1/16*     Polymorphism                                       [html][lec3] [slides][lec3s] [lhs][lhs3]
-  *1/28*     Typeclasses                                        [html][lec4] [lhs][lhs4]
-   *2/4*     Monads                                             [html][lec7] [lhs][lhs7]
-   *2/6*     (contd.)
-  *2/11*     (contd.)
-  *2/13*     Parser Combinators                                 [html][lec9] [lhs][lhs9]
-  *2/18*     (contd.)
-  *2/25*     Randomized Testing                                 [html][lec10] [lhs][lhs10]
-  *2/27*     Monad Transformers                                 [html][lec11] [lhs][lhs11]
-   *3/4*     Concurrency                                        [html][htm13] [pdf][lec13] [lhs][lhs13]
-   *3/6*     (contd.) + Lambda Calculus                         [pdf][lec14]
-  *3/11*     (contd.) + Type Inference                          [html][lec15] [lhs][lhs15]
-
-<!--   
-  *1/23*     Functional Animation                               [html][lec5] [lhs][lhs5]
-  *1/28*     Functional Reactive Programming                    [html][lec6] [lhs][lhs6]
-  *2/13*     contd.
- *2/27*     Data Parallelism                                   [html][lec12] [code][cod12]
-   *3/4*     contd.
-             Hindley-Milner Type Inference                      
- -->
+   *1/6*     Introduction                                       [pdf][lec1] [hs][hs1] [lhs][lhs1]
+   *1/8*     Higher-Order Functions
+  *1/13*     Polymorphism
+  *1/15*     Typeclasses
+  *1/20*     Monoids & Functors 
+  *1/22*     Monads
+  *1/27*     (contd.)
+  *1/29*     Parser Combinators 
+   *2/3*     (contd.)
+   *2/5*     Testing
+  *2/10*     (contd.)
+  *2/12*     Transformers
+  *2/17*     Parallelism
+  *2/19*     Concurrency
+  *2/24*     Lambda Calculus
+  *2/26*     Hindley-Milner
+   *3/3*     Refinement Types 
+   *3/5*     (contd.)
+  *3/10*     (contd.)
+  *3/12*     (contd.)
 
 ----------------------------------------------------------------------------------
 
 [lec1]: static/lec-intro-2x2.pdf
 [hs1]:  static/lec-intro.hs
 [lhs1]: static/lec-intro.lhs
+
+<!--
 
 [lec2]: lectures/lec-higher-order-1.html
 [lhs2]: lectures/lec-higher-order-1.lhs
@@ -64,7 +62,6 @@ title: Lectures
 [lec15]: lectures/lec-inference.html
 [lhs15]: lectures/lec-inference.lhs
 
-<!--
 [lec5]: lectures/lec-animation.html
 [lhs5]: lectures/lec-animation.lhs
 

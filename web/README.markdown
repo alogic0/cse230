@@ -1,5 +1,5 @@
-Install relevant libraries
---------------------------
+Install Libraries
+--------------------
 
    cabal install hakyll -fhighlighting pandoc
 
