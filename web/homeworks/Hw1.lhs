@@ -2,6 +2,16 @@
 title: Homework #1, Due Friday, 1/31/14
 ---
 
+Haskell Formalities
+-------------------
+
+We declare that this is the Hw1 module and import some libraries:
+
+> module Hw1 where
+> import SOE
+> import Play
+> import XMLTypes
+
 Part 0: All About You
 ---------------------
 
@@ -19,7 +29,7 @@ Preliminaries
 Before starting this assignment:
 
 * Download and install the [Haskell Platform](http://www.haskell.org/platform/).
-* Download the [SOE code bundle](/static/SOE-cse230.tgz).
+* Download the [SOE code bundle](/static/SOE-cse230-wi15.tar.gz).
 
 * Verify that it works by changing into the `SOE/src` directory and
    running `ghci Draw.lhs`, then typing `main0` at the prompt:
@@ -41,16 +51,6 @@ ghci Draw.lhs
 ~~~
 Main: Define me!
 ~~~
-
-Haskell Formalities
--------------------
-
-We declare that this is the Hw1 module and import some libraries:
-
-> module Hw1 where
-> import SOE
-> import Play
-> import XMLTypes
 
 Part 1: Defining and Manipulating Shapes
 ----------------------------------------
