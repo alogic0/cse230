@@ -1,47 +1,63 @@
+\begin{code}
+import System.Environment
+import Data.Maybe
+import Data.Char
+\end{code}
 
-> import System
-> import Data.Maybe
-> import Data.Char
-
-> code = smalls ++ caps 
->   where smalls   = zip ['a' .. 'z'] shuffles 
->         caps     = zip ['A' .. 'Z'] (map toUpper shuffles) 
->         shuffles = "thequickbrownfxjmpsdvlazyg"
+\begin{code}
+code = smalls ++ caps 
+  where 
+    smalls   = zip ['a' .. 'z'] shuffles 
+    caps     = zip ['A' .. 'Z'] (map toUpper shuffles) 
+    shuffles = "thequickbrownfxjmpsdvlazyg"
+\end{code}
 
 First, we will just make two operations for swizzling and unswizzling
 characters.
 
-> txChar kvs c  = fromMaybe c (lookup c kvs)
-> swizzleChar   = txChar code 
-> unswizzleChar = txChar [(y,x) | (x,y) <- code]
+\begin{code}
+txChar kvs c  = fromMaybe c (lookup c kvs)
+swizzleChar   = txChar code 
+unswizzleChar = txChar [(y,x) | (x,y) <- code]
+\end{code}
 
 To (un/)swizzle one line, we will (un/)swizzle each character 
 on the line. We simply make actual operation a parameter. 
 
-> txLine op     = map op 
+\begin{code}
+txLine op     = map op 
+\end{code}
 
 To swizzle a file, we will first reverse the lines in the file and 
 then swizzle each line of the file. 
 
-> txContent op  = unlines . map (txLine op) . reverse . lines
+\begin{code}
+txContent op  = unlines . map (txLine op) . reverse . lines
+\end{code}
 
 To actually transform a file
 
-> txFile op f   = do d  <- readFile f
->                    writeFile (f ++ ".swz") (txContent op d) 
+\begin{code}
+txFile op f   = do d  <- readFile f
+                   writeFile (f ++ ".swz") (txContent op d) 
+\end{code}
 
 And to transform many files
 
-> txFiles op = sequence_ . map (txFile op)
+\begin{code}
+txFiles op = sequence_ . map (txFile op)
+\end{code}
 
 Finally, at the very top, the command line args tell us whether to
 swizzle or unswizzle
 
- > main = do args <- getArgs 
- >           case args of 
- >             ("-s":files) -> txFiles swizzleChar files
- >             ("-u":files) -> txFiles unswizzleChar files
- >             (_)          -> putStrLn "usage: swizzle -s file1 file2 ... OR swizzle -u file1 file2 ..."
+\begin{code}
+main = do args <- getArgs 
+          case args of 
+            ("-s":files) -> txFiles swizzleChar files
+            ("-u":files) -> txFiles unswizzleChar files
+            (_)          -> putStrLn "usage: swizzle -s file1 file2 ... OR swizzle -u file1 file2 ..."
+\end{code}
 
 
 

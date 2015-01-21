@@ -2,9 +2,16 @@
 title: Home 
 ---
 
-## Signup "Sheet"
+## Clicker Registration
+
+<iframe src="https://docs.google.com/forms/d/12QlNpz9VeXvHWyfLsu5wr7QiekXiX8r80J6K-G67PJc/viewform?embedded=true" width="760" height="200" frameborder="0" marginheight="0" marginwidth="0">Loading...</iframe>
+
+<!---
+## Signup Sheet
 
 <iframe src="https://docs.google.com/forms/d/169ahxEeKmbVJJ7dbJ39R2eESAXP28jhiQwwIyceX0aE/viewform?embedded=true" width="760" height="500" frameborder="0" marginheight="0" marginwidth="0">Loading...</iframe>
+
+-->
 
 ## Staff
 

@@ -1,5 +1,5 @@
 ---
-title: Homework #1, Due Friday, 1/31/14
+title: Homework #1, Due Monday 1/26/15
 ---
 
 Haskell Formalities

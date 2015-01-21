@@ -5,7 +5,7 @@ title: Lectures
 **Date**     **Topic**                                          **Notes**
 --------     ----------------------------------------------     --------------
    *1/6*     Introduction                                       [pdf][lec1] [hs][hs1] [lhs][lhs1]
-   *1/8*     Higher-Order Functions
+   *1/8*     Higher-Order Functions                             [html][lec2] [hs][lhs2]
   *1/13*     Polymorphism
   *1/15*     Typeclasses
   *1/20*     Monoids & Functors 
@@ -31,8 +31,6 @@ title: Lectures
 [hs1]:  static/lec-intro.hs
 [lhs1]: static/lec-intro.lhs
 
-<!--
-
 [lec2]: lectures/lec-higher-order-1.html
 [lhs2]: lectures/lec-higher-order-1.lhs
 [lec2s]: slides/lec-higher-order.lhs.slides.html
@@ -41,6 +39,7 @@ title: Lectures
 [lhs3]: lectures/lec-higher-order-2.lhs
 [lec3s]: slides/lec-polymorphism.lhs.slides.html
 
+<!--
 [lec4]: lectures/lec-typeclasses.html
 [lhs4]: lectures/lec-typeclasses.lhs
 [lec7]: lectures/lec-monads.html

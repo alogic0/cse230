@@ -2,41 +2,16 @@
 title: Higher-Order Programming II
 ---
 
-Spotting Patterns In The "Real" World
-=====================================
-
-It was all well and good to see the patterns in tiny "toy" functions.
-Needless to say, these patterns appear regularly in "real" code, if only
-you know to look for them. Next, we will develop a small library that
-"swizzles" text files.
-
-1. We will start with a beginner's version that is 
-   riddled with [explicit recursion](swizzle-v0.html).
-
-2. Next, we will try to spot the patterns and eliminate 
-   recursion using [higher-order functions](swizzle-v1.html).
-
-3. Finally, we will [parameterize](swizzle-v2.html) the code so that we can
-   both "swizzle" and "unswizzle" without duplicate code.
-
-Exercise
---------
-
-Needless to say, the code can be cleaned up even more, 
-and I encourage you to do so. For example, rewrite the 
-code that swizzles `Char` so that instead of using
-association lists, it uses the more efficient `Map k v` 
-(maps from keys `k` to values `v`) type in the standard 
-library module `Data.Map`.
-
 Recursive Types
 ===============
 
 Recall that Haskell allows you to create brand new data types like this one
 from [lecture 1](lec1.html).
 
-> data Shape  = Rectangle Double Double 
->             | Polygon [(Double, Double)]
+\begin{code}
+data Shape  = Rectangle Double Double 
+            | Polygon [(Double, Double)]
+\end{code}
 
 Quiz
 ----
@@ -86,9 +61,11 @@ However, Haskell (and other functional languages), allow you to define
 datatypes *recursively* much like functions can be defined recursively.
 For example, consider the type
 
-> data IntList = IEmpty 
->              | IOneAndMore Int IntList
->              deriving (Show)
+\begin{code}
+data IntList = IEmpty 
+             | IOneAndMore Int IntList
+             deriving (Show)
+\end{code}
 
 (Ignore the bit about `deriving` for now.) What does a value of type `IntList`
 look like? As before, you can *only* obtain them through the constructors.
@@ -103,9 +80,11 @@ IEmpty :: IntList
 Now, that we have at least one value of type `IntList` we can make more by
 using the other constructor
 
-> is1 = IOneAndMore 1 IEmpty
-> is2 = IOneAndMore 2 is1
-> is3 = IOneAndMore 3 is2
+\begin{code}
+is1 = IOneAndMore 1 IEmpty
+is2 = IOneAndMore 2 is1
+is3 = IOneAndMore 3 is2
+\end{code}
 
 and so on. Suppose we ask Haskell to *show* us `is3` we get
 
@@ -124,22 +103,28 @@ are, now you simply have boxes within boxes.
 Of course, there is no reason why the type definition must have only one
 *recursive* occurrence of the type. You can encode general *trees* like 
 
-> data IntTree = ILeaf Int
->              | INode IntTree IntTree
->              deriving (Show)
+\begin{code}
+data IntTree = ILeaf Int
+             | INode IntTree IntTree
+             deriving (Show)
+\end{code}
 
 Here, each value is either a simple *leaf* which is a box containing an
 `Int` labeled `ILeaf`, such as each of
 
-> it1  = ILeaf 1 
-> it2  = ILeaf 2
+\begin{code}
+it1  = ILeaf 1 
+it2  = ILeaf 2
+\end{code}
 
 or an *internal node* which is a box containing two trees, a left and right
 tree, and marked with a tag `INode`, such as each of
 
-> itt   = INode (ILeaf 1) (ILeaf 2)
-> itt'  = INode itt itt
-> itt'' = INode itt' itt'
+\begin{code}
+itt   = INode (ILeaf 1) (ILeaf 2)
+itt'  = INode itt itt
+itt'' = INode itt' itt'
+\end{code}
 
 Now, if we ask Haskell
 
@@ -155,15 +140,19 @@ Needless to say, you can have multiple branching factors, for example
 you can define [2-3 trees](http://en.wikipedia.org/wiki/2-3_tree) over
 integer values as 
 
-> data Int23T = ILeaf0 
->             | INode2 Int Int23T Int23T
->             | INode3 Int Int23T Int23T Int23T
->             deriving (Show)
+\begin{code}
+data Int23T = ILeaf0 
+            | INode2 Int Int23T Int23T
+            | INode3 Int Int23T Int23T Int23T
+            deriving (Show)
+\end{code}
 
 An example value of type Int23T would be
 
-> i23t = INode3 0 t t t
->   where t = INode2 1 ILeaf0 ILeaf0
+\begin{code}
+i23t = INode3 0 t t t
+  where t = INode2 1 ILeaf0 ILeaf0
+\end{code}
 
 which looks like 
 
@@ -171,10 +160,10 @@ which looks like
 
 and has the type
 
-~~~~~~{.haskell}
+~~~~~{.haskell}
 ghci> :type i23t 
 i23t :: Int23T
-~~~~~~{.haskell}
+~~~~~~
 
 
 Parameterized Types
@@ -183,13 +172,15 @@ Parameterized Types
 We could go on and define versions of `IntList` that stored, say, `Char`
 and `Double` values instead.
 
-> data CharList   = CEmpty 
->                 | COneAndMore Char CharList
->                 deriving (Show)
->
-> data DoubleList = DEmpty 
->                 | DOneAndMore Char CharList
->                 deriving (Show)
+\begin{code}
+data CharList   = CEmpty 
+                | COneAndMore Char CharList
+                deriving (Show)
+
+data DoubleList = DEmpty 
+                | DOneAndMore Char CharList
+                deriving (Show)
+\end{code}
 
 and we could go on and on and do the same for trees and 2-3 trees and 
 so on. But that would be truly lame, because we would (mostly) repeating 
@@ -202,12 +193,11 @@ bit that is different is the underlying *base* data stored in each
 box of the structure. So, we will turn that base datatype into a
 *type parameter* that is passed as input to the type constructor.
 
-> data List a = Empty 
->             | OneAndMore a (List a) 
->             deriving (Show)
-
-  Empty      :: List a
-  OneAndMore :: a -> List a -> List a
+\begin{code}
+data List a = Empty 
+            | OneAndMore a (List a) 
+            deriving (Show)
+\end{code}
 
 
 Now, as before, we may define each of the types as simply *instances* 
@@ -238,9 +228,11 @@ returns a value of type `List a`. Here's how you might construct values
 of type `List Int` (note that you can use the binary constructor function
 in infix form)
 
-> l1 = OneAndMore 'a' `OneAndMore` Empty
-> l2 = OneAndMore 'b' `OneAndMore` l1 
-> l3 = OneAndMore 'c' `OneAndMore` l2 
+\begin{code}
+l1 = OneAndMore 'a' `OneAndMore` Empty
+l2 = OneAndMore 'b' `OneAndMore` l1 
+l3 = OneAndMore 'c' `OneAndMore` l2 
+\end{code}
 
 Of course, this is pretty much how the "built-in" lists are defined
 in Haskell, except that `Empty` is called `[]` and `OneAndMore` is 
@@ -249,16 +241,20 @@ called `:`.
 One can use parameterized types to generalize the definition of the 
 other data structures that we saw. For example, trees
 
-> data Tree a   = Leaf a 
->               | Node (Tree a) (Tree a) 
->               deriving (Show)
+\begin{code}
+data Tree a   = Leaf a 
+              | Node (Tree a) (Tree a) 
+              deriving (Show)
+\end{code}
 
 and *2-3* trees
 
-> data Tree23 a = Leaf0  
->               | Node2 (Tree23 a) (Tree23 a)
->               | Node3 (Tree23 a) (Tree23 a) (Tree23 a)
->               deriving (Show)
+\begin{code}
+data Tree23 a = Leaf0  
+              | Node2 (Tree23 a) (Tree23 a)
+              | Node3 (Tree23 a) (Tree23 a) (Tree23 a)
+              deriving (Show)
+\end{code}
 
 Kinds
 -----
@@ -331,9 +327,11 @@ Good old recursion. You have a base case for the `Leaf` pattern (namely
 larger of the recursively computed heights of the left and right subtrees.)
 Lets give it a whirl
 
-> st1 = Node (Leaf "cat")    (Leaf "doggerel")  
-> st2 = Node (Leaf "piglet") (Leaf "hippopotamus") 
-> st3 = Node st1 st2
+\begin{code}
+st1 = Node (Leaf "cat")    (Leaf "doggerel")  
+st2 = Node (Leaf "piglet") (Leaf "hippopotamus") 
+st3 = Node st1 st2
+\end{code}
 
 ~~~~~{.haskell}
 ghci> height st1
@@ -346,33 +344,10 @@ ghci> height st3
 How do we compute the *number* of leaf elements in the tree?
 
 ~~~~~{.haskell}
-ht (Leaf _)     = 0
-ht (Node l r)   = 1 + max (ht l) (ht r)
-
 size            :: Tree a -> Int
 size (Leaf _)   = 1
 size (Node l r) = (size l) + (size l)
-
-foo :: (a -> b) -> (b -> b-> b) -> Tree a -> b 
-foo b op (Leaf x)   = b x
-foo b op (Node l r) = (foo b op l) `op` (foo b op r)
-
-
-bar               :: (b -> b-> b) -> Tree b -> b 
-bar op (Leaf x)   = x
-bar op (Node l r) = (bar op l) `op` (bar op r)
-
-
-ht   = foo (\_ -> 0)    (\xl xr -> 1 + max xl xr)
-sz   = foo (\_ -> 1)    (+)
-elts = foo (\x -> [x])  (++) 
-
-
-elts :: Tree a -> [a]
-elts = foo [] (:) 
-elts = foo [] (++)
 ~~~~~
-
 
 How about a function that gathers all the elements that occur 
 as leaves of the tree:
@@ -431,18 +406,24 @@ subtrees, and another to give us the value at a leaf. In other words, the
 base `b` needs to be a *function* that takes as input the leaf value and
 returns as output the result of folding over the leaf.
 
-> treeFold op b (Leaf x)   = b x
-> treeFold op b (Node l r) = (treeFold op b l) 
->                            `op` 
->                            (treeFold op b r)
+\begin{code}
+treeFold op b (Leaf x)   = b x
+treeFold op b (Node l r) = (treeFold op b l) 
+                           `op` 
+                           (treeFold op b r)
+\end{code}
 
 Now we can write the `size` as
 
-> size   = treeFold (+) (const 1)
+\begin{code}
+size   = treeFold (+) (const 1)
+\end{code}
 
 How would you write `height` ?
 
-> height = treeFold undefined undefined
+\begin{code}
+height = treeFold undefined undefined
+\end{code}
 
 where `const 0` and `const 1` are the respective base functions that
 ignore the leaf value and just always return `0` and `1` respectively.
@@ -488,3 +469,40 @@ Node (Leaf "piglet") (Leaf "hippopotamus")
 ghci> treeMap reverse st2
 Node (Leaf "telgip") (Leaf "sumatopoppih")
 ~~~~~
+
+
+Spotting Patterns In The "Real" World
+=====================================
+
+It was all well and good to see the patterns in tiny "toy" functions.
+Needless to say, these patterns appear regularly in "real" code, if only
+you know to look for them. Next, we will develop a small library that
+"swizzles" text files.
+
+1. We will start with a beginner's version that is 
+   riddled with [explicit recursion](swizzle-v0.html).
+
+2. Next, we will try to spot the patterns and eliminate 
+   recursion using [higher-order functions](swizzle-v1.html).
+
+3. Finally, we will [parameterize](swizzle-v2.html) the code so that we can
+   both "swizzle" and "unswizzle" without duplicate code.
+
+Exercise
+--------
+
+Needless to say, the code can be cleaned up even more, 
+and I encourage you to do so. For example, rewrite the 
+code that swizzles `Char` so that instead of using
+association lists, it uses the more efficient `Map k v` 
+(maps from keys `k` to values `v`) type in the standard 
+library module `Data.Map`.
+
+
+
+<div class="hidden">
+\begin{code}
+main :: IO ()
+main = return ()
+\end{code}
+</div>

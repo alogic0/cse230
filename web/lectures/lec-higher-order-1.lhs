@@ -2,7 +2,16 @@
 title: Higher-Order Functions I 
 ---
 
-> import Data.Char
+<div class="hidden">
+\begin{code}
+{-@ LIQUID "--short-names" @-}
+{-@ LIQUID "--no-termination" @-}
+
+module Lec2 where
+
+import Data.Char
+\end{code}
+</div>
 
 Functions Are Data 
 ==================
@@ -13,15 +22,19 @@ pass functions around to in *any* manner that you can pass any other data
 around in. For example, suppose you have a simple functions `plus1` and `minus1` 
 defined via the equations
 
-> plus1 :: Int -> Int
-> plus1 x = x + 1
+\begin{code}
+plus1 :: Int -> Int
+plus1 x = x + 1
 
-> minus1 :: Int -> Int
-> minus1 x = x - 1
+minus1 :: Int -> Int
+minus1 x = x - 1
+\end{code}
 
 Now, you can make a pair containing two instances of the function 
 
-> funp = (plus1, minus1)
+\begin{code}
+funp = (plus1, minus1)
+\end{code}
 
 Lets see what the type of the pair is
 
@@ -32,14 +45,36 @@ funp :: (Int -> Int, Int -> Int)
 
 or you can make a list containing five copies 
 
-> funs = [plus1, minus1, plus1]
+\begin{code}
+quiz1 = (plus1, minus1, plus1, "cat") 
 
-Again, note that the type is most descriptive
+f2i :: Double -> Int
+f2i = undefined
+\end{code}
+
+**QUIZ**
+
+What is the type of `quiz1` ?
+
+A. `Int -> Int`
+B. `[Int -> Int]`
+C. `[Int] -> [Int]`
+D. `(Int -> Int, Int -> Int, Int -> Int)`
+E. *Type Error*
+
+
+
+
+<div class="hidden">
+
+Indeed, note that the type is most descriptive
 
 ~~~~~{.haskell}
 ghc> :type funs 
 funs :: [Int -> Int]
 ~~~~~
+
+</div>
 
 Taking Functions as Input
 -------------------------
@@ -48,7 +83,13 @@ This innocent looking feature makes a langage surprisingly brawny and
 flexible, because now, we can write *higher-order* functions that 
 other functions as input and return functions as output! Consider
 
-> doTwice f x = f (f x)
+\begin{code}
+doTwice f x = f (f x)
+\end{code}
+
+
+
+
 
 Here, `doTwice` takes two inputs a function `f` and value  `x`, 
 and returns the the result of applying `f` to `x`, and feeding that 
@@ -70,7 +111,7 @@ Did I mention that the execution model is just *substitute equals for equals*
 ~~~~~{.haskell}
 doTwice plus1 10 == {- unfold doTwice -} 
                     plus1 (plus1 10)	
-	         == {- unfold plus1 -}
+                 == {- unfold plus1 -}
 		    plus1 (10 + 1)
 		 == {- unfold plus1 -}
 		    (10 + 1) + 1
@@ -86,15 +127,27 @@ functions as output. For example, rather than writing different
 versions `plus1`, `plus2`, `plus3` *etc.* we can just write a 
 single function `plusn` as
 
-> plusn :: Int -> (Int -> Int)
-> plusn n = f
->           where f x = x + n
+\begin{code}
+plusn :: Int -> (Int -> Int)
+plusn n = f
+          where f x = x + n
+\end{code}
+
+
+plus10 1000 ==  (plusn 10) 1000
+            ==  (f
+                   where f x = x + 10) 1000
+            ==   (f 1000) where f x  = x + 10
+            ==   1000 + 10
+            ==   1010
 
 That is, `plusn` returns as output a function `f` which itself 
 takes as input an integer `x` and adds `n` to it. Lets use it
 
-> plus10  = plusn 10
-> minus20 = plusn (-20)
+\begin{code}
+plus10  = plusn 10
+minus20 = plusn (-20)
+\end{code}
 
 Note the types of the above
 
@@ -149,6 +202,7 @@ In regular arithmetic, the `-` operator is *left-associative*. Hence,
 that takes two numbers and returns an number, in Haskell, `->` is a
 *type operator* that takes two types, the input and output and returns
 a new function type. 
+
 However, `->` is *right-associative* : the type 
 
 ~~~~~{.haskell}
@@ -163,11 +217,13 @@ is equivalent to
 
 That is, the first type of function, which takes two integers, is in
 reality a function that takes a single integer as input, and returns 
-as *output* a function from integers to integers! Equipped with this 
+as *output* a function from integers to integers! Enriched with this 
 knowledge, consider the function
 
-> plus :: Int -> Int -> Int
-> plus n x = n + x
+\begin{code}
+plus     :: Int -> Int -> Int
+plus n x = n + x
+\end{code}
 
 Thus, whenever we use `plus` we can either pass in both the inputs 
 at once
@@ -177,11 +233,13 @@ ghci> plus 10 20
 30
 ~~~~~
 
-or instead, we can  *partially* apply the function, by just passing
+or instead, we can  *partially apply* the function, by just passing
 in only one input
 
-> plusfive :: Int -> Int
-> plusfive = plus 5
+\begin{code}
+plusfive :: Int -> Int
+plusfive = plus 5
+\end{code}
 
 thereby getting as output a function that is *waiting* for the second
 input (at which point it will produce the final result.)
@@ -204,11 +262,37 @@ plusfive 1000 == {- definition of plusfive -}
 Finally, by now it should be pretty clear that `plusn n` is equivalent 
 to the partially applied `plus n`.
 
-If you have been following so far, you should know how this behaves.
+**QUIZ**
 
-> doTwicePlus20 = doTwice (plus 20)
+If you have been following so far, you should know
+what is the value of `quiz2` ?
+
+\begin{code}
+quiz2   = zog 100 
+  where
+    zog = doTwice (plus 20)
+\end{code}
+
+
+A. *Type Error*
+B. `40`
+C. `100`
+D. `120`
+E. `140`
+
+
+
+
+
+
+
+
 
 First, see if you can figure out the type.
+
+\begin{code}
+doTwicePlus20 = doTwice (plus 20)
+\end{code}
 
 ~~~~~{.haskell}	
 doTwicePlus20 :: Int -> Int
@@ -240,6 +324,7 @@ is an expression that corresponds to a function that takes an argument `x`
 and returns as output the value `x + 2`. The function has no name, but we
 can use it in the same place where we would write a function. 
 
+
 ~~~~~{.haskell}
 ghci> (\x -> x + 1) 100
 101
@@ -249,7 +334,10 @@ ghci> doTwice (\x -> x + 1) 100
 
 Of course, we could name the function if we wanted to
 
-> plus1' = \x -> x + 1
+\begin{code}
+plus1' :: Int -> Int
+plus1' = \x -> x + 1
+\end{code}
 
 Indeed, in general, a function defining equation
 	
@@ -271,7 +359,9 @@ functions as *infix* operations: a function whose name appears in
 parentheses can be used as an infix operation. My personal favorite 
 infix operator is the *pipeline* function defined thus
 
-> (|>) x f = f x
+\begin{spec}
+(|>) x f = f x
+\end{spec}
 
 Huh? Doesn't seem so compelling does it? Actually, its very handy 
 because I can now write deeply nested function applications in an 
@@ -286,7 +376,12 @@ ghci> 0 |> plus 1 |> plus5
 
 We can get a triple-repeating version of `doTwice` as
 
-> doThrice f x = x |> f |> f |> f
+\begin{code}
+doThrice f x = x |> f |> f |> f
+
+append (x:xs) ys = x : append xs ys 
+append _      ys = ys
+\end{code}
 
 It is easy to check that
 
@@ -317,8 +412,13 @@ ghci> 2 `plus` 3
 
 Recall the function from the last lecture
 
-> clone x n | n <= 0    = []
->           | otherwise = x : clone x (n-1)
+\begin{code}
+clone         :: Int -> a -> [a]
+clone n x 
+  | n <= 0    = []
+  | otherwise = x : clone (n-1) x
+\end{code}
+
 
 We invoke it in an infix-style like so
 
@@ -335,6 +435,36 @@ are called *sections*. Thus, the section `(+1)`
 is simply a function that takes as input a number, the 
 argument missing on the left of the `+` and returns 
 that number plus `1`.
+
+
+
+goober = (`clone` 3) ==> \n -> clone n 3
+
+n `clone` x =======> clone n x
+
+(`clone` x) =======> (\n -> clone n x)
+(n `clone`) =======> (\x -> clone n x)
+ 
+quiz7 = goober 2 ======> (`clone` 3) 2 ===> (2 `clone` 3) ==== 
+
+A. TYPE ERROR
+B. [2,2,2]
+C. [3,3]
+D. [3,3,3]
+E. [2,2]
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ~~~~~{.haskell}
 ghci> doThrice (+1) 0
@@ -377,22 +507,45 @@ Of course, with great power, comes great responsibility.
 The section `(10 <)` takes an integer and returns `True` 
 iff the integer is greater than `10`
 
-> greaterThan10 :: Int -> Bool
-> greaterThan10 = (10 <)
+\begin{code}
+greaterThan10 :: Int -> Bool
+greaterThan10 = (10 <)
+\end{code}
 
-However, because the input and output types are different, it doesn't make
+**QUIZ**
+
+What is the value of:
+
+\begin{spec}
+quiz3 = doTwice greaterThan10 100
+\end{spec}
+
+A. `True`
+B. `False`
+C. *Type Error*
+D. `Run-time Error`
+E. `101`
+
+
+
+
+
+
+
+
+Indeed, because the input and output types are different, it doesn't make
 sense to try `doTwice greaterThan10`
 
 ~~~~~{.haskell}
 ghci> doTwice greaterThan10 100
-*Main> doTwice
 
-<interactive>:1:0:
-  No instance for (Show ((t -> t) -> t -> t))
-  arising from a use of `print' at <interactive>:1:0-6
-  Possible fix:
-  add an instance declaration for (Show ((t -> t) -> t -> t))
-  In a stmt of a 'do' expression: print it
+
+<interactive>:36:9:
+    Couldn't match type ‘Bool’ with ‘Int’
+    Expected type: Int -> Int
+      Actual type: Int -> Bool
+    In the first argument of ‘doTwice’, namely ‘greaterThan10’
+    In the expression: doTwice greaterThan10 100
 ~~~~~
 
 Urgh!!! However, a quick glance at the type of doTwice would have spared us
@@ -415,9 +568,68 @@ different, as in `greaterThan10` then the function is incompatible with
 `doTwice`.
 
 
-Ok, to make sure you're following, can you figure out what this does?
+**QUIZ**
 
-> ex1 = doTwice doTwice
+Ok, to make sure you're following, what is the type of:
+
+\begin{code}
+foo x f = f x
+\end{code}
+
+What is the type of `foo` ?
+A. `a -> a`
+B. `(a -> a) -> a`
+C. `a -> b -> a -> b`    
+D. `a -> (a -> b) -> b`  -- ($) f x = f x 
+E. `a -> b -> a`
+
+
+
+
+
+-- the "second" function is the thing with the first argument "filled in"
+
+plus     :: Int -> (Int -> Int)
+plus     :: (Int, Int) -> Int
+plus x y = x + y
+
+
+
+
+**QUIZ**
+
+\begin{code}
+x |> f   = f x 
+do2 f x  = x |> f |> f
+do3 f x  = x |> f |> f |> f
+
+quiz4    = do3
+\end{code}
+
+A. `a -> a`
+B. `(a, a) -> (a, a)`
+C. `(a -> a) -> a -> a`
+D. `a -> (a, a)`
+E. `a -> a -> a -> a`
+
+
+**QUIZ**
+
+And what is the *value* of:
+
+\begin{code}
+quiz5   = foo (+ 10) 0
+  where
+    foo = do2 do3
+\end{code}
+
+A. `50`
+B. *Type Error*
+C. `60`
+
+
+
+
 
 
 Polymorphic Data Structures
@@ -430,9 +642,11 @@ by types containing type variables.
 
 For example, the list length function
 
-> len :: [a] -> Int
-> len []     = 0
-> len (x:xs) = 1 + len xs
+\begin{code}
+len        :: [a] -> Int
+len []     = 0
+len (x:xs) = 1 + len xs
+\end{code}
 
 doesn't peep inside the actual contents of the list; it only 
 counts how many there are. This property is crisply specified
@@ -504,22 +718,34 @@ the place. For example, suppose I represent a using a pair
 of `Double` (for the x- and y- coordinates.) and I have a list
 of points that represent a polygon.
 
-> type XY      = (Double, Double)
-> type Polygon = [XY]
+\begin{code}
+type XY      = (Double, Double)
+type Polygon = [XY]
+\end{code}
 
 Now, its easy to write a function that *shifts* a 
 point by a specific amount
 
-> shiftXY :: XY -> XY -> XY
-> shiftXY (dx, dy) (x, y) = (x + dx, y + dy)
+\begin{code}
+shiftXY :: XY -> XY -> XY
+shiftXY (dx, dy) (x, y) = (x + dx, y + dy)
+\end{code}
 
 How would we translate a polygon? Just jog over all the 
 points in the polygon and translate them individually
 
 ~~~~~{.haskell}
 shiftPoly :: XY -> Polygon -> Polygon
-shiftPoly d []       = []
-shiftPoly d (xy:xys) = shiftXY d xy : shiftPoly d xys
+
+shiftPoly d []     = []
+shiftPoly d (x:xs) = shiftXY d x : shiftPoly d xs
+
+uppercase []       = []
+uppercse (x:xs)   = toUpper x : uppercase xs
+
+shiftPoly d    = thing (shiftXY d) 
+uppercase      = thing toUpper  
+
 ~~~~~
 
 Now, in a lesser language, you might be quite happy with
@@ -557,8 +783,10 @@ and transforms each value to return a list of `b` values. We can
 now safely reuse the pattern, by *instantiating* the transformer 
 with different specific operations.
 
-> toUpperString = map toUpper
-> shiftPoly     = map shiftXY
+\begin{code}
+toUpperString = map toUpper
+shiftPoly     = map shiftXY
+\end{code}
 
 Much better.
 
@@ -594,7 +822,7 @@ Lets write a function that *adds* all the elements of a list.
 
 ~~~~~{.haskell}
 listAdd []     = 0
-listAdd (x:xs) = x + (listAdd xs)
+listAdd (x:xs) = x + listAdd xs
 ~~~~~
 
 Next, a function that *multiplies* the elements of a list.
@@ -616,31 +844,42 @@ foldr op base (x:xs) = x `op` (foldr op base xs)
 Now, each of the individual functions are just specific instances of the 
 general `foldr` pattern.
 
-> listAdd = foldr (+) 0
-> listMul = foldr (*) 1
+\begin{code}
+listAdd = foldr (+) 0
+listMul = foldr (*) 1
+\end{code}
 
 To develop some intuition about `foldr` lets "run" it a few times by hand.
 
 ~~~~~{.haskell}
 foldr op base [x1,x2,...,xn] 
-== {- unfold -} 
-   x1 `op` (foldr op base [x2,...,xn])
-== {- unfold -} 
-   x1 `op` (x2 `op` (foldr op base [...,xn]))
-== {- unfold -} 
-   x1 `op` (x2 `op` (... `op` (xn `op` base)))
+  == {- unfold -} 
+     x1 `op` (foldr op base [x2,...,xn])
+  == {- unfold -} 
+     x1 `op` (x2 `op` (foldr op base [...,xn]))
+  == {- unfold -} 
+     x1 `op` (x2 `op` (... `op` (xn `op` base)))
 ~~~~~
 
 Aha! It has a rather pleasing structure that mirrors that of lists; the `:`
 is replaced by the `op` and the `[]` is replaced by `base`. Thus, can you 
 see how to use it to eliminate recursion from the recursion from 
 
-~~~~~{.haskell}
+\begin{spec}
 listLen []     = 0
-listLen (x:xs) = 1 + (listLen xs)
-~~~~~
+listLen (x:xs) = 1 + listLen xs
+\end{spec}
 
-> listLen = foldr (\_ tailLen -> 1 + tailLen) 0
+**QUIZ**
+
+Which of these is a valid implementation of `listLen`
+
+A. `listLen = foldr (\n -> n + 1) 0`
+B. `listLen = foldr (+ 1) 0`
+C. `listLen = foldr (\_ n -> n + 1) 0`
+D. `listLen = foldr (\x xs -> 1 + listLen xs) 0`
+E. All of the above
+
 
 How would you use it to eliminate the recursion from 
 
@@ -649,7 +888,13 @@ factorial 0 = 1
 factorial n = n * factorial (n-1)
 ~~~~~
 
-> factorial n = foldr (*) 1 [1..n]
+
+\begin{code}
+factorial n = foldr (*) 1 [1..n]
+\end{code}
+
+
+
 
 One last pattern exercise. How about this fellow from last lecture:
 
@@ -662,8 +907,10 @@ fuseActions (a1:acts) = do a1
 
 Can you spot the pattern? 
 
-> fuseActions :: [IO ()] -> IO ()	
-> fuseActions = foldr (>>) (return ())  
+\begin{code}
+fuseActions :: [IO ()] -> IO ()	
+fuseActions = foldr (>>) (return ())  
+\end{code}
 
 Which is more readable? HOFs or Recursion
 -----------------------------------------
