@@ -1,5 +1,5 @@
 ---
-title: Homework #2, Due Friday 2/24/14
+title: Homework #2, Due Monday 2/9/14
 ---
 
 > {-# LANGUAGE TypeSynonymInstances #-}
@@ -35,7 +35,7 @@ will receive a confirmation email after submitting.
 
 Before starting this assignment:
 
-1. Install `parsec3` via the command `cabal install parsec3`
+1. Install `parsec` via the command `cabal install parsec`
 2. Learn to read the [documentation](http://hackage.haskell.org)
 3. Download the test files 
    [test.imp](/static/test.imp),
@@ -129,14 +129,14 @@ binary operators applied to sub-expressions
 and binary operators are simply two-ary functions
 
 > data Bop = 
->     Plus     -- +  :: Int  -> Int  -> Int
->   | Minus    -- -  :: Int  -> Int  -> Int
->   | Times    -- *  :: Int  -> Int  -> Int
->   | Divide   -- /  :: Int  -> Int  -> Int
->   | Gt       -- >  :: Int -> Int -> Bool 
->   | Ge       -- >= :: Int -> Int -> Bool
->   | Lt       -- <  :: Int -> Int -> Bool
->   | Le       -- <= :: Int -> Int -> Bool
+>     Plus     -- (+)  :: Int  -> Int  -> Int
+>   | Minus    -- (-)  :: Int  -> Int  -> Int
+>   | Times    -- (*)  :: Int  -> Int  -> Int
+>   | Divide   -- (/)  :: Int  -> Int  -> Int
+>   | Gt       -- (>)  :: Int -> Int -> Bool 
+>   | Ge       -- (>=) :: Int -> Int -> Bool
+>   | Lt       -- (<)  :: Int -> Int -> Bool
+>   | Le       -- (<=) :: Int -> Int -> Bool
 >   deriving (Show)
 
 > data Value =
