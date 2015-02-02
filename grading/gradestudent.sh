@@ -30,7 +30,7 @@ fi
 GRADEFILE="$GRADEDIR/gradereport"
 
 (echo "Grading $ASSN for $STUDENT" &&
-ghc -iSOE/src:$ASSN -odir $GRADEDIR -o $GRADEDIR/grade$ASSN --make $ASSN/grade$ASSN.hs grade.hs $ASSNFILE $ASSN/Solution.hs &&
+ghc -iSOE/src:$ASSN -odir $GRADEDIR -o $GRADEDIR/grade$ASSN --make $ASSN/grade$ASSN.hs grade.hs $ASSNFILE $ASSN/Solution.hs 2>&1 &&
 $GRADEDIR/grade$ASSN
 ) | tee $GRADEFILE
 
