@@ -29,7 +29,7 @@ Preliminaries
 Before starting this assignment:
 
 * Download and install the [Haskell Platform](http://www.haskell.org/platform/).
-* Download the [SOE code bundle](/static/SOE-cse230-wi15.tar.gz).
+* Download the [SOE code bundle](/static/SOE-cse230.tar.gz).
 
 * Verify that it works by changing into the `SOE/src` directory and
    running `ghci Draw.lhs`, then typing `main0` at the prompt:
