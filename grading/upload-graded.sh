@@ -1,17 +1,17 @@
 #!/bin/sh
 
-HW=$1
+ASSN=$1
 
-for dir in `find "studentfiles/" -name "HW$HW-*-graded"`; do
+for dir in `find "studentfiles/" -iname "$ASSN-*-graded"`; do
      echo "$dir"
-     rm -f $dir/gradehw$HW
+     rm -f $dir/grade$ASSN
      rm -f $dir/*.o
      rm -f $dir/*.hi
      rm -f $dir/*~
     
-     assn=`basename $dir`
+     graded=`basename $dir`
      studentdir=`dirname $dir`
      student=`basename $studentdir`
 
-     scp -r studentfiles/$student/$assn/ cse230-goto:~/current/$student/
+     scp -r studentfiles/$student/$graded/ cse230-goto:~/current/$student/
 done

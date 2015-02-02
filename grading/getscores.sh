@@ -1,8 +1,8 @@
 #!/bin/sh
 
-HW=$1
+ASSN=$1
 
-for dir in `find "studentfiles/" -name "HW$HW-*-graded"`; do
+for dir in `find "studentfiles/" -iname "$ASSN-*-graded"`; do
     studentdir=`dirname $dir`
     student=`basename $studentdir`
     score=`tail -1 $dir/gradereport | head -1 | cut -d " " -f 11`
