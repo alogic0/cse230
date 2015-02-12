@@ -1,5 +1,5 @@
 ---
-title: Homework #2, Due Monday 2/9/14
+title: Homework #2, Due Friday 2/13/15
 ---
 
 > {-# LANGUAGE TypeSynonymInstances #-}
@@ -176,10 +176,12 @@ change, when we add exceptions and such.
 **Hint:** The value `get` is of type `State Store Store`. Thus, to extract 
 the value of the "current store" in a variable `s` use `s <- get`.
 
+> evalOp :: Op -> Value -> Value -> Value
+> evalOp Plus (IntVal i) (IntVal j) = IntVal (i+j)
+> 
 > evalE (Var x)      = error "TBD"
-> evalE (Val v)      = error "TBD" 
+> evalE (Val v)      = error "TBD"
 > evalE (Op o e1 e2) = error "TBD"
-
 
 Statement Evaluator
 -------------------
@@ -195,12 +197,12 @@ evaluating the `Statement`.
 
 **Hint:** The value `put` is of type `Store -> State Store ()`. 
 Thus, to "update" the value of the store with the new store `s'` 
-do `put s`.
+do `put s'`.
 
+> evalS (Assign x e )    = error "TBD" 
 > evalS w@(While e s)    = error "TBD" 
 > evalS Skip             = error "TBD"
 > evalS (Sequence s1 s2) = error "TBD"
-> evalS (Assign x e )    = error "TBD"
 > evalS (If e s1 s2)     = error "TBD" 
 
 In the `If` case, if `e` evaluates to a non-boolean value, just skip both

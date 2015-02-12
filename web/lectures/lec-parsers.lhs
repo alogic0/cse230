@@ -2,10 +2,17 @@
 title: Monadic Parsing 
 ---
 
-> {-# LANGUAGE LambdaCase #-}
-> import Data.Char
-> import Data.Functor
-> import Control.Monad
+<div class="hidden">
+\begin{code}
+{-@ LIQUID "--no-termination" @-}
+{-@ LIQUID "--short-names"    @-}
+ 
+{-# LANGUAGE LambdaCase #-}
+import Data.Char
+import Data.Functor
+import Control.Monad
+\end{code}
+</div>
 
 Before we continue, a word from our sponsors: 
 
@@ -14,7 +21,7 @@ Before we continue, a word from our sponsors:
 They are simply an (extremely versatile) abstraction, like `map` or `fold`.
 
 What is a Parser?
-=================
+-----------------
 
 A parser is a piece of software that takes a raw `String` (or sequence of
 bytes) and returns some structured object, for example, a list of options, 
@@ -29,16 +36,6 @@ software system has a parser tucked away somewhere inside, for example
              Games    Level descriptors
            Routers    Packets
 
-
-<!--
-
-- Shell Scripts (command-line options)
-- Web Browsers (duh!)
-- Games (level descriptors)
-- Routers (packets)
-- etc
-
--->
 
 (Indeed I defy you to find any serious system that *does not* do some
 parsing somewhere!)
@@ -120,11 +117,15 @@ Minus 2 (Minus 3 4)
 So, we can have our parsers return a *list* of possible results (where the
 empty list corresponds to a failure to parse.)
 
-> newtype Parser a = P (String -> [(a, String)])
+\begin{code}
+newtype Parser a = P (String -> [(a, String)])
+\end{code}
 
 The above is simply the parser (*cough* action) the actual parsing is done by
 
-> doParse (P p) s = p s
+\begin{code}
+doParse (P p) s = p s
+\end{code}
 
 Lets build some parsers!
 
@@ -171,10 +172,12 @@ oneChar = P $ \case -> { [] -> [] | cs -> [(head cs, tail cs)]}
 
 Yes, we can!
 
-> oneChar :: Parser Char
-> oneChar = P (\cs -> case cs of
->                c:cs' -> [(c, cs')]
->                _     -> [])
+\begin{code}
+oneChar :: Parser Char
+oneChar = P (\cs -> case cs of
+               c:cs' -> [(c, cs')]
+               _     -> [])
+\end{code}
 
 Lets run the parser
 
@@ -257,7 +260,9 @@ pairP p1 p2 = P (\cs ->
 
 Now we can more cleanly write:
 
-> twoChar = pairP oneChar oneChar 
+\begin{code}
+twoChar = pairP oneChar oneChar 
+\end{code}
 
 which would run like this
 
@@ -294,7 +299,7 @@ type ST a = S (State -> (a, State))
 
 
 Parser is A Monad
-=================
+-----------------
 
 Indeed, a parser, like a state transformer, [is a monad!][2] 
 if you squint just the right way. 
@@ -311,12 +316,6 @@ bindP :: Parser a -> (a -> Parser b) -> Parser b
 so, we need to suck the `a` values out of the first 
 parser and invoke the second parser with them on the 
 remaining part of the string.
-
-
-returnP :: a -> Parser a
-returnP x = P $ \cs -> [(x, cs)]
-
-
 
 
 QUIZ
@@ -357,8 +356,10 @@ e. `doParse p1 cs` and `doParse fp2 x cs'`
 
 Indeed, we can define the `bindP` function for `Parser`s as:
 
-> bindP p1 fp2 = P $ \cs -> [(y, cs'') | (x, cs')  <- doParse p1 cs
->                                      , (y, cs'') <- doParse (fp2 x) cs']
+\begin{code}
+bindP p1 fp2 = P $ \cs -> [(y, cs'') | (x, cs')  <- doParse p1 cs
+                                     , (y, cs'') <- doParse (fp2 x) cs']
+\end{code}
 
 See how we suck the `a` values out of the first 
 parser (by running `doParse`) and invoke the second 
@@ -374,29 +375,34 @@ returnP :: a -> Parser a
 
 which means we must ignore the input string and just return the input element
 
-> returnP x = P (\cs -> [(x, cs)])
-
+\begin{code}
+returnP x = P (\cs -> [(x, cs)])
+\end{code}
 
 Armed with those, we can officially brand parsers as monads
 
-> instance Monad Parser where
->   (>>=)  = bindP
->   return = returnP
+\begin{code}
+instance Monad Parser where
+  (>>=)  = bindP
+  return = returnP
+\end{code}
 
 This is going to make things really sweet...
 
 Parser Combinators
-==================
+------------------
 
 Since parsers are monads, we can write a bunch of **high-level combinators**
 for composing smaller parsers into bigger ones.
 
 For example, we can use our beloved `do` notation to rewrite `pairP` as
 
-> pairP       :: Parser a -> Parser b -> Parser (a, b)
-> pairP px py = do x <- px
->                  y <- py
->                  return (x, y)
+\begin{code}
+pairP       :: Parser a -> Parser b -> Parser (a, b)
+pairP px py = do x <- px
+                 y <- py
+                 return (x, y)
+\end{code}
 
 shockingly, exactly like the `pairs` function [from here](/lectures/monads2.html).
 
@@ -405,19 +411,25 @@ parsers. It will be helpful to have a a *failure* parser that
 always goes down in flames, that is, returns `[]` -- **no** 
 successful parses.
 
-> failP = P $ const []
+\begin{code}
+failP = P $ const []
+\end{code}
 
 Seems a little silly to write the above, but its helpful to build 
 up richer parsers like the following which parses a `Char` *if* 
 it satisfies a predicate `p`
 
-> satP ::  (Char -> Bool) -> Parser Char
-> satP p = do c <- oneChar 
->             if p c then return c else failP
+\begin{code}
+satP ::  (Char -> Bool) -> Parser Char
+satP p = do c <- oneChar 
+            if p c then return c else failP
+\end{code}
 
 we can write some simple parsers for particular characters 
 
-> lowercaseP = satP isAsciiLower
+\begin{code}
+lowercaseP = satP isAsciiLower
+\end{code}
 
 ~~~~~{.haskell}
 ghci> doParse (satP ('h' ==)) "mugatu"
@@ -429,19 +441,20 @@ ghci> doParse (satP ('h' ==)) "hello"
 
 The following parse alphabet and numeric characters respectively
 
-> alphaChar = satP isAlpha
-> digitChar = satP isDigit
+\begin{code}
+alphaChar = satP isAlpha
+digitChar = satP isDigit
+\end{code}
 
 and this little fellow returns the first digit in a string as an `Int`
 
 
 
 
-
-> digitInt  = do c <- digitChar
->                return ((read [c]) :: Int)
-
-
+\begin{code}
+digitInt  = do c <- digitChar
+               return ((read [c]) :: Int)
+\end{code}
 
 
 
@@ -459,8 +472,9 @@ ghci> doParse digitInt "cat"
 
 Finally, this parser will parse only a particular `Char` passed in as input
 
-> char c = satP (== c)
-
+\begin{code}
+char c = satP (== c)
+\end{code}
 
 **EXERCISE:** Write a function `strP :: String -> Parser String` such that
 `strP s` parses **exactly** the string `s` and nothing else, that is,
@@ -476,37 +490,15 @@ ghci> doParse dogeP "doggoneit"
 ~~~~~
 
 
-mapM f []     = return []
-mapM f (x:xs) = do y  <- f x
-                   ys <- mapM f xs
-                   return (y:ys)
-
-strP = mapM char 
-
-f = foo . bar 
-
-           cs :: [Char] 
-
-map char cs   :: [Parser Char]
-
-strP        :: [Char] -> Parser [Char] 
-strP []     = return ""
-strP (c:cs) = char c >> strP cs >> return (c:cs)
-
-sequence :: [Parser Char] -> Parser [Char]
-
-
-
-
-
-
 A Nondeterministic Choice Combinator
 ------------------------------------
 
 Next, lets write a combinator that takes two sub-parsers and 
 **non-deterministically chooses** between them. 
 
-> chooseP :: Parser a -> Parser a -> Parser a
+~~~~~{.haskell}
+chooseP :: Parser a -> Parser a -> Parser a
+~~~~~
 
 That is, we want `chooseP p1 p2` to return a succesful parse
 if *either* `p1` or `p2` succeeds. 
@@ -514,7 +506,9 @@ if *either* `p1` or `p2` succeeds.
 We can use `chooseP` to build a parser that returns either 
 an alphabet or a numeric character
 
-> alphaNumChar = alphaChar `chooseP` digitChar
+\begin{code}
+alphaNumChar = alphaChar `chooseP` digitChar
+\end{code}
 
 After defining the above, we should get something like:
 
@@ -527,8 +521,7 @@ ghci> doParse alphaNumChar "230"
 [('2', "30")]
 ~~~~~
 
-QUIZ
-----
+**QUIZ**
 
 How would we go about encoding **choice** in our parsers? 
 
@@ -562,28 +555,35 @@ p1 `chooseP` p2 = P $ \cs -> case doParse p1 cs of
 ~~~~~
 
 
-> p1 `chooseP` p2 = P (\cs -> doParse p1 cs ++ doParse p2 cs)
+\begin{code}
+
+chooseP :: Parser a -> Parser a -> Parser a
+p1 `chooseP` p2 = P (\cs -> doParse p1 cs ++ doParse p2 cs)
+\end{code}
 
 Thus, what is even nicer is that if *both* parsers succeed, 
 you end up with all the results. 
 
 Here's a parser that grabs `n` characters from the input 
 
-> grabn :: Int -> Parser String 
-> grabn n 
->   | n <= 0    = return ""
->   | otherwise = do c  <- oneChar  
->                    cs <- grabn (n-1)
->                    return (c:cs)
+\begin{code}
+grabn :: Int -> Parser String 
+grabn n 
+  | n <= 0    = return ""
+  | otherwise = do c  <- oneChar  
+                   cs <- grabn (n-1)
+                   return (c:cs)
+\end{code}
 
 **DO IN CLASS** How would you nuke the nasty recursion from `grabn` ?
 
-QUIZ
-----
+**QUIZ**
 
 Lets now use our choice combinator to define:
 
-> foo = grabn 2 `chooseP` grabn 4
+\begin{code}
+foo = grabn 2 `chooseP` grabn 4
+\end{code}
 
 What does the following evaluate to?
 
@@ -618,13 +618,14 @@ Even with the rudimentary parsers we have at our disposal, we can start
 doing some rather interesting things. For example, here is a little
 calculator. First, we parse the operation
 
-> intOp      = plus `chooseP` minus `chooseP` times `chooseP` divide 
->   where 
->     plus   = char '+' >> return (+)
->     minus  = char '-' >> return (-)
->     times  = char '*' >> return (*)
->     divide = char '/' >> return div
-
+\begin{code}
+intOp      = plus `chooseP` minus `chooseP` times `chooseP` divide 
+  where 
+    plus   = char '+' >> return (+)
+    minus  = char '-' >> return (-)
+    times  = char '*' >> return (*)
+    divide = char '/' >> return div
+\end{code}
 
 **DO IN CLASS** 
 Can you guess the type of the above parser?
@@ -632,10 +633,12 @@ Can you guess the type of the above parser?
 
 Next, we can parse the expression
 
-> calc = do x  <- digitInt
->           op <- intOp
->           y  <- digitInt 
->           return $ x `op` y
+\begin{code}
+calc = do x  <- digitInt
+          op <- intOp
+          y  <- digitInt 
+          return $ x `op` y
+\end{code}
 
 which, when run, will both parse and calculate
 
@@ -656,8 +659,7 @@ ghci> doParse calc "8*2cat"
 [(16,"cat")]
 ~~~~~
 
-QUIZ
-----
+**QUIZ**
 
 What does the following return:
 
@@ -682,9 +684,8 @@ more swell if we could grab particular `String` tokens.
 
 Lets try to write it! 
 
-> string :: String -> Parser String
-
 ~~~~~{.haskell}
+string :: String -> Parser String
 string ""     = return ""
 string (c:cs) = do char c
                    string cs
@@ -694,7 +695,11 @@ string (c:cs) = do char c
 **DO IN CLASS**
 Ewww! Is that explicit recursion ?! Lets try again (can you spot the pattern)
 
-> string = undefined -- fill this in
+\begin{code}
+string :: String -> Parser String
+string = undefined -- fill this in
+\end{code}
+
 
 Much better!
 
@@ -715,13 +720,15 @@ returns an `a` and returns a parser that returns *many*
 `a` values. That is, it keeps grabbing as many `a` values 
 as it can and returns them as a `[a]`.
 
-> manyP     :: Parser a -> Parser [a]
-> manyP p   = many1 `chooseP` many0 
->   where 
->     many0 = return []
->     many1 = do x  <- p
->                xs <- manyP p
->                return (x:xs)
+\begin{code}
+manyP     :: Parser a -> Parser [a]
+manyP p   = many1 `chooseP` many0 
+  where 
+    many0 = return []
+    many1 = do x  <- p
+               xs <- manyP p
+               return (x:xs)
+\end{code}
 
 But beware! The above can yield *many* results
 
@@ -742,31 +749,26 @@ sequence of elements and not *all* the prefixes.
 
 To do so, we need a *deterministic* choice combinator
 
-(#$%#$%)
-
-> firstChooseP :: Parser a -> Parser a -> Parser a
-> firstChooseP p1 p2 = P $ \cs -> case doParse (p1 `chooseP` p2) cs of
->                          []  -> []
->                          x:_ -> [x]
->
-
-> (<|>) :: Parser a -> Parser a -> Parser a
-> p1 <|> p2 = P $ \cs -> case doParse (p1 `chooseP` p2) cs of
->                          []  -> []
->                          x:_ -> [x]
->               
+\begin{code}
+(<|>) :: Parser a -> Parser a -> Parser a
+p1 <|> p2 = P $ \cs -> case doParse (p1 `chooseP` p2) cs of
+                         []  -> []
+                         x:_ -> [x]
+\end{code}
 
 The above runs choice parser but returns only the first result. 
 Now, we can revisit the `manyP` combinator and ensure that it 
 returns a single, maximal sequence
 
-> mmanyP     :: Parser a -> Parser [a]
-> mmanyP p   = mmany1 <|> mmany0
->   where 
->     mmany0 = return []
->     mmany1 = do x  <- p
->                 xs <- mmanyP p
->                 return (x:xs)
+\begin{code}
+mmanyP     :: Parser a -> Parser [a]
+mmanyP p   = mmany1 <|> mmany0
+  where 
+    mmany0 = return []
+    mmany1 = do x  <- p
+                xs <- mmanyP p
+                return (x:xs)
+\end{code}
 
 **DO IN CLASS** 
 Wait a minute! What exactly is the difference between the above and 
@@ -791,10 +793,6 @@ oneInt = do xs <- mmanyP digitChar
             return $ ((read xs) :: Integer)
 ~~~~~
 
-bob     :: (a -> b) -> Parser a -> (Parser b)
-bob f p = do x <- p
-           return $ f x
-
 *Aside*, can you spot the pattern above? We took the 
 parser `mmanyP digitChar` and simply converted its output
 using the `read` function. This is a recurring theme, and 
@@ -809,14 +807,18 @@ of `map` that we have seen before (`lift1`) and we bottle up
 the pattern by declaring `Parser` to be an instance of the 
 `Functor` typeclass
 
-> instance Functor Parser where
->   fmap f p = do x <- p
->                 return (f x)
+\begin{code}
+instance Functor Parser where
+  fmap f p = do x <- p
+                return (f x)
+\end{code}
 
 after which we can rewrite
 
-> oneInt ::  Parser Int
-> oneInt = read `fmap` mmanyP digitChar 
+\begin{code}
+oneInt ::  Parser Int
+oneInt = read `fmap` mmanyP digitChar 
+\end{code}
 
 Lets take it for a spin
 
@@ -827,20 +829,23 @@ ghci> doParse oneInt "123a"
 
 
 Parsing Arithmetic Expressions
-==============================
+------------------------------
+
 
 Lets use the above to build a small calculator, that
 parses and evaluates arithmetic expressions. In essence, 
 an expression is either binary operand applied to two 
 sub-expressions or an integer. We can state this as
 
-> calc0      ::  Parser Int
-> calc0      = binExp <|> oneInt 
->   where 
->     binExp = do x <- oneInt
->                 o <- intOp 
->                 y <- calc0 
->                 return $ x `o` y
+\begin{code}
+calc0      ::  Parser Int
+calc0      = binExp <|> oneInt 
+  where 
+    binExp = do x <- oneInt
+                o <- intOp 
+                y <- calc0 
+                return $ x `o` y
+\end{code}
 
 This works pretty well!
 
@@ -873,31 +878,22 @@ operator is *right associative* hence the above result.
 
 I wonder if we can try to fix it just by flipping the order
 
-> calc1      ::  Parser Int
-> calc1      = binExp <|> oneInt 
->   where 
->     binExp = do x <- calc1 
->                 o <- intOp 
->                 y <- oneInt
->                 return $ x `o` y
+\begin{code}
+calc1      ::  Parser Int
+calc1      = binExp <|> oneInt 
+  where 
+    binExp = do x <- calc1 
+                o <- intOp 
+                y <- oneInt
+                return $ x `o` y
+\end{code}
 
-> calc1'      ::  Parser Int
-> calc1'      = oneInt <|> binExp
->   where 
->     binExp = do x <- calc1'
->                 o <- intOp 
->                 y <- oneInt
->                 return $ x `o` y
-
-
-
-QUIZ
-----
+**QUIZ**
 
 What does the following evaluate to?
 
 ~~~~~{.haskell}
-ghci> doParse calc1' "11+22-33+45"
+ghci> doParse calc1 "11+22-33+45"
 ~~~~~
 
 a. `[( 11 , "+22-33+45")]`
@@ -940,50 +936,6 @@ as the string is parsed as
 
 
 
-> sumE1  = chain addOp prodE1
-> prodE1 = chain mulOp factorE1 
-> factorE1 = parenP sumE1 <|> oneInt
-
-
-
-> chainl op base = base >>= bob
->   where
->     bob  x    = grab x <|> return x
->     grab x    = do o <- op
->                    y <- base
->                    bob $ x `o` y
-
-
-> sumE1       = prodE1 >>= bob 
->   where 
->     bob   x = grab x <|> return x
->     grab  x = do o <- addOp
->                  y <- prodE1 
->                  bob $ x `o` y
-> 
-> prodE1      = factorE1 >>= bob 
->   where 
->     bob   x = grab x <|> return x
->     grab  x = do o <- mulOp
->                  y <- factorE1 
->                  bob $ x `o` y
-> 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 Precedence
@@ -993,36 +945,42 @@ We can add both associativity and precedence, by stratifying the
 parser into different levels. Here, lets split our operations 
 into addition- 
 
-> addOp       = plus `chooseP` minus 
->   where 
->     plus    = char '+' >> return (+)
->     minus   = char '-' >> return (-)
+\begin{code}
+addOp       = plus `chooseP` minus 
+  where 
+    plus    = char '+' >> return (+)
+    minus   = char '-' >> return (-)
+\end{code}
 
 and multiplication-precedence.
 
-> mulOp       = times `chooseP` divide 
->   where 
->     times   = char '*' >> return (*)
->     divide  = char '/' >> return div
+\begin{code}
+mulOp       = times `chooseP` divide 
+  where 
+    times   = char '*' >> return (*)
+    divide  = char '/' >> return div
+\end{code}
 
 Now, we can stratify our language into (mutually recursive) sub-languages, 
 where each top-level expression is parsed as a **sum-of-products** 
 
-> sumE     = addE <|> prodE 
->   where 
->     addE = do x <- prodE 
->               o <- addOp
->               y <- sumE 
->               return $ x `o` y
->
-> prodE    = mulE <|> factorE
->   where 
->     mulE = do x <- factorE
->               o <- mulOp
->               y <- prodE 
->               return $ x `o` y
->
-> factorE = parenP sumE <|> oneInt
+\begin{code}
+sumE     = addE <|> prodE 
+  where 
+    addE = do x <- prodE 
+              o <- addOp
+              y <- sumE 
+              return $ x `o` y
+
+prodE    = mulE <|> factorE
+  where 
+    mulE = do x <- factorE
+              o <- mulOp
+              y <- prodE 
+              return $ x `o` y
+
+factorE = parenP sumE <|> oneInt
+\end{code}
 
 We can run this 
 
@@ -1039,8 +997,7 @@ What would happen if we *swapped* the order of `prodE`
 and `sumE` in the body of `addE` (or `factorE` and `prodE` 
 in the body of `prodE`) ? Why?
 
-QUIZ
-----
+**QUIZ**
 
 Recall that in the above,
 
@@ -1066,10 +1023,12 @@ e. `Parser Int -> Parser a`
 
 Lets write `parenP`
 
-> parenP p = do char '(' 
->               x <- p
->               char ')'
->               return x
+\begin{code}
+parenP p = do char '(' 
+              x <- p
+              char ')'
+              return x
+\end{code}
 
 Parsing Pattern: Chaining
 -------------------------
@@ -1125,21 +1084,23 @@ end and never comes back. Instead, we want to make sure we
 keep consuming `prodE` values and adding them up (rather 
 like fold) and so we could do
 
-> sumE1       = prodE1 >>= addE1
->   where 
->     addE1 x = grab x <|> return x
->     grab  x = do o <- addOp
->                  y <- prodE1 
->                  addE1 $ x `o` y
->
-> prodE1      = factorE1 >>= mulE1 
->   where 
->     mulE1 x = grab x <|> return x
->     grab  x = do o <- mulOp
->                  y <- factorE1 
->                  mulE1 $ x `o` y
->
-> factorE1 = parenP sumE1 <|> oneInt
+\begin{code}
+sumE1       = prodE1 >>= addE1
+  where 
+    addE1 x = grab x <|> return x
+    grab  x = do o <- addOp
+                 y <- prodE1 
+                 addE1 $ x `o` y
+
+prodE1      = factorE1 >>= mulE1 
+  where 
+    mulE1 x = grab x <|> return x
+    grab  x = do o <- mulOp
+                 y <- factorE1 
+                 mulE1 $ x `o` y
+
+factorE1 = parenP sumE1 <|> oneInt
+\end{code}
 
 It is easy to check that the above is indeed left associative.
 
@@ -1153,18 +1114,22 @@ pattern: the only differences are the *base* parser
 (`prodE1` vs `factorE1`) and the binary operation (`addOp` vs `mulOp`).
 We simply make those parameters to our *chain-left* combinator
 
-> p `chainl` pop = p >>= rest
->    where 
->      rest x = grab x <|> return x 
->      grab x = do o <- pop
->                  y <- p
->                  rest $ x `o` y 
+\begin{code}
+p `chainl` pop = p >>= rest
+   where 
+     rest x = grab x <|> return x 
+     grab x = do o <- pop
+                 y <- p
+                 rest $ x `o` y 
+\end{code}
 
 after which we can rewrite the grammar in three lines
 
-> sumE2    = prodE2   `chainl` addOp
-> prodE2   = factorE2 `chainl` mulOp
-> factorE2 = parenP sumE2 <|> oneInt 
+\begin{code}
+sumE2    = prodE2   `chainl` addOp
+prodE2   = factorE2 `chainl` mulOp
+factorE2 = parenP sumE2 <|> oneInt 
+\end{code}
 
 ~~~~~{.haskell}
 ghci> doParse sumE2 "10-1-1"
@@ -1193,3 +1158,4 @@ around with in [HW2](/homeworks/Hw2.html).
 [3]: http://www.haskell.org/haskellwiki/Parsec
 [4]: http://www.cse.chalmers.se/~nad/publications/danielsson-parser-combinators.html
 [5]: http://portal.acm.org/citation.cfm?doid=1706299.1706347
+λ> 

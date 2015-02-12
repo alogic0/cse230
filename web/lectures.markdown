@@ -4,18 +4,14 @@ title: Lectures
 
 **Date**     **Topic**                                          **Notes**
 --------     ----------------------------------------------     --------------
-   *1/6*     Introduction                                       [pdf][lec1] [hs][hs1] [lhs][lhs1]
+   *1/6*     Introduction                                       [pdf][lec1]  [hs][hs1] [lhs][lhs1]
    *1/8*     Higher-Order Functions                             [html][lec2] [hs][lhs2]
-  *1/13*     Polymorphism
-  *1/15*     Typeclasses
-  *1/20*     Monoids & Functors 
-  *1/22*     Monads
-  *1/27*     (contd.)
-  *1/29*     Parser Combinators 
-   *2/3*     (contd.)
-   *2/5*     Testing
-  *2/10*     (contd.)
-  *2/12*     Transformers
+  *1/13*     Polymorphism                                       [html][lec3] [hs][lhs3]
+  *1/15*     Typeclasses                                        [html][lec4] [hs][lhs4] 
+  *1/20*     Monoids & Functors                                 [html][lec7] [hs][lhs7]
+  *1/22*     Monads                                             [html][lec7] [hs][lhs7]
+  *2/10*     Parser Combinators                                  
+  *2/12*     Testing
   *2/17*     Parallelism
   *2/19*     Concurrency
   *2/24*     Lambda Calculus
@@ -39,14 +35,16 @@ title: Lectures
 [lhs3]: lectures/lec-higher-order-2.lhs
 [lec3s]: slides/lec-polymorphism.lhs.slides.html
 
-<!--
 [lec4]: lectures/lec-typeclasses.html
 [lhs4]: lectures/lec-typeclasses.lhs
+
 [lec7]: lectures/lec-monads.html
 [lhs7]: lectures/lec-monads.lhs
+
 [lec9]: lectures/lec-parsers.html
 [lhs9]: lectures/lec-parsers.lhs
 
+<!--
 [lec10]: lectures/lec-quickcheck.html
 [lhs10]: lectures/lec-quickcheck.lhs
 

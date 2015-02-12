@@ -6,6 +6,11 @@ remoteuser=rjhala
 remotedir=/cse/htdocs/classes/wi15/cse230-a
 remotehost=login.eng.ucsd.edu
 
+PANDOCHANDOUT=pandoc --highlight-style=tango --from=markdown+lhs --chapters --latex-engine=pdflatex --template=templates/handout.latex --filter templates/inside.hs
+
+lhsObjects  := $(wildcard lectures/*.lhs)
+pdfObjects  := $(patsubst lectures/%.lhs,pdf/%.pdf,$(wildcard lectures/*.lhs))
+
 all: website
 	./website rebuild
 
@@ -29,3 +34,7 @@ update:
 slides:
 	cd slides && make && cd ..
 
+handouts: $(pdfObjects)
+
+pdf/%.pdf: lectures/%.lhs
+	-$(PANDOCHANDOUT) $? -o $@ 

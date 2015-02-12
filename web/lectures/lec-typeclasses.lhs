@@ -2,11 +2,16 @@
 title: Typeclasses 
 ---
 
-> {-# LANGUAGE OverlappingInstances, IncoherentInstances, FlexibleInstances, TypeSynonymInstances #-}
-> import Control.Arrow 
+<div class="hidden">
+\begin{code}
+{-# LANGUAGE OverlappingInstances, IncoherentInstances, FlexibleInstances, TypeSynonymInstances #-}
+import Control.Arrow 
+\end{code}
+</div>
 
 We have already seen that the `+` operator works for a bunch of different
 underlying data types. For example
+
 
 ~~~~~{.haskell}
 ghci> 2 + 3 
@@ -104,15 +109,6 @@ In a nutshell, a typeclass is a collection of operations (functions)
 that must exist for the underlying type. For example, lets look at 
 possibly the simplest typeclass `Eq`
 
-> -- HEREHEREHERE
-
-> data RJ = Ranjit | Jhala 
-
-> x = Ranjit
-> y = Ranjit
-
-
-
 ~~~~~{.haskell}
 class  Eq a  where
   (==) :: a -> a -> Bool
@@ -146,17 +142,9 @@ When we type an expression into ghci, it computes the value
 and then calls `show` on the result. Thus, if we create a 
 *new* type by
 
-> data Unshowable = A | B | C 
-
-> instance Show Unshowable where
->   show = whatAStupidName 
-
-> whatAStupidName A = "A"
-> whatAStupidName B = "B"
-> whatAStupidName C = "C"
-
-> data List a = NULL 
->             | CONS a (List a)
+\begin{code}
+data Unshowable = A | B | C 
+\end{code}
 
 then we can create values of the type, 
 
@@ -188,7 +176,9 @@ ghci> x == x
 ~~~~~
 
 Again, the previously incomprehensible type error message should 
-make sense to you.
+make sense to you. 
+
+**EXERCISE** Lets *create* an `instance` for `Show Unshowable`
 
 Automatic Derivation
 --------------------
@@ -199,7 +189,9 @@ certain key type classes, namely those in the standard library.
 
 To do so, we simply dress up the data type definition with
 
-> data Showable = A' | B' | C' deriving (Eq, Show) 
+\begin{code}
+data Showable = A' | B' | C' deriving (Eq, Show) 
+\end{code}
 
 and now we have
 
@@ -260,8 +252,10 @@ Lets now see how slickly typeclasses integrate with the rest of Haskell's
 type system by building a small library for *Maps* (aka associative arrays,
 lookup tables etc.)
 
-> data BST k v = Empty 
->              | Bind k v (BST k v) (BST k v) 
+\begin{code}
+data BST k v = Empty 
+             | Node k v (BST k v) (BST k v) 
+\end{code}
 
 Did you get that? 
 
@@ -270,8 +264,10 @@ Quiz
 
 What is the type of:
 
-> zoo Empty            = []
-> zoo (Bind key _ l r) = zoo l ++ [key] ++ zoo r  
+\begin{code}
+zoo Empty            = []
+zoo (Node key _ l r) = zoo l ++ [key] ++ zoo r  
+\end{code}
 
 a. `BST k v -> k`
 b. `BST k v -> [k]`
@@ -305,14 +301,26 @@ Exercise
 
 Fill in the definition of:
 
-> foldBST op base Empty          = undefined 
-> foldBST op base (Bind k v l r) = undefined
+\begin{code}
+foldBST op base Empty          = base 
+foldBST op base (Node k v l r) = op k v ll rr
+  where
+   ll                          = foldBST op base l 
+   rr                          = foldBST op base r 
+\end{code}
 
 so that the following functions behave as the names suggest!
 
-> keysOfTree'  = foldBST (\k _ lr rr -> lr ++ [k] ++ rr) []
-> valsOfTree'  = foldBST (\_ v lr rr -> lr ++ [v] ++ rr) []
-> totalOfTree' = foldBST (\_ v lr rr -> lr + v + rr)     0 
+\begin{code}
+
+safeDiv n 0 = Nothing
+safeDiv n m = Just (n `div` m)
+
+
+keysOfTree'  = foldBST (\k _ lr rr -> lr ++ [k] ++ rr) []
+valsOfTree'  = foldBST (\_ v lr rr -> lr ++ [v] ++ rr) []
+totalOfTree' = foldBST (\_ v lr rr -> lr + v + rr)     0 
+\end{code}
 
 
 Binary Search Ordering
@@ -330,12 +338,13 @@ might look like
 The organization of the BST allows us to efficiently search the tree 
 for a key.
 
-> find k (Bind k' v' l r) 
->   | k == k'    = Just v'
->   | k <  k'    = find k l
->   | otherwise  = find k r
-> find k Empty = Nothing
-
+\begin{code}
+find k (Node k' v' l r) 
+  | k == k'    = Just v'
+  | k <  k'    = find k l
+  | otherwise  = find k r
+find k Empty = Nothing
+\end{code}
 
 We must ensure that the invariant is preserved by the `insert` function. 
 In the functional setting, the `insert` will return a brand new tree. 
@@ -357,9 +366,9 @@ insert k v Empty = undefined
 What shall we fill in for `undefined`?
 
 a. `Empty`
-b. `Bind k v`
+b. `Node k v`
 c. `v`
-d. `Bind k v Empty Empty`
+d. `Node k v Empty Empty`
 e. `(k, v)`
 
 ~~~~~{.haskell}
@@ -387,16 +396,18 @@ Quiz
 
 Ok, now lets move to the more interesting case:
 
-> insert k v (Bind k' v' l r) 
->   | k == k'      = undefined
+\begin{code}
+insert k v (Node k' v' l r) 
+  | k == k'      = undefined
+\end{code}
 
 What shall we fill in for `undefined`? 
 
 a. `Empty`
-b. `Bind k v  l     r`
-c. `Bind k v' l     r`
-d. `Bind k v  Empty Empty`
-e. `Bind k v' Empty Empty`
+b. `Node k v  l     r`
+c. `Node k v' l     r`
+d. `Node k v  Empty Empty`
+e. `Node k v' Empty Empty`
 
 ~~~~~{.haskell}
 .
@@ -424,16 +435,18 @@ Quiz
 
 And finally,
 
-> insert k v (Bind k' v' l r) 
->   | k < k'      = undefined
+\begin{code}
+insert k v (Node k' v' l r) 
+  | k < k'      = undefined
+\end{code}
 
 What shall we fill in for `undefined`? 
 
 a. `Empty`
 b. `insert k v l`
 c. `insert k v r`
-d. `Bind k v (insert k v l) r`
-e. `Bind k v l (insert k v r)`
+d. `Node k v (insert k v l) r`
+e. `Node k v l (insert k v r)`
 
 
 ~~~~~{.haskell}
@@ -459,11 +472,11 @@ e. `Bind k v l (insert k v r)`
 All in one place:
 
 ~~~~~{.haskell}
-insert k v Empty = Bind k v Empty Empty 
-insert k v (Bind k' v' l r) 
-  | k == k'      = Bind k v l r
-  | k <  k'      = Bind k' v' (insert k v l) r 
-  | otherwise    = Bind k' v' l (insert k v r)
+insert k v Empty = Node k v Empty Empty 
+insert k v (Node k' v' l r) 
+  | k == k'      = Node k v l r
+  | k <  k'      = Node k' v' (insert k v l) r 
+  | otherwise    = Node k' v' l (insert k v r)
 ~~~~~
 
 The BST ordering obviates the need for any backtracking. If additionally 
@@ -471,22 +484,28 @@ if the tree is kept *balanced* we ensure very efficient searching.
 
 Now, we can create a particular lookup table like so 
 
-> t0 = insert "burrito"     4.50 Empty
-> t1 = insert "chimichanga" 5.25 t0 
-> t2 = insert "frijoles"    2.75 t1
+\begin{code}
+t0 = insert "burrito"     4.50 Empty
+t1 = insert "chimichanga" 5.25 t0 
+t2 = insert "frijoles"    2.75 t1
+\end{code}
 
 **NOTE:** Each `insert` returns a brand new `BST`, this is not Java!
 
 Of course this is a bit tedious, so it may be easier to write an `ofList`
 function that will turn an association list into an appropriate `BST`.
 
-> ofList = foldl (\t (k, v) -> insert k v t) Empty
+\begin{code}
+ofList = foldl (\t (k, v) -> insert k v t) Empty
+\end{code}
 
 Now, we can just do
 
-> t = ofList [ ("chimichanga", 5.25)
->            , ("burrito"    , 4.50)
->            , ("frijoles"   , 2.75)]
+\begin{code}
+t = ofList [ ("chimichanga", 5.25)
+           , ("burrito"    , 4.50)
+           , ("frijoles"   , 2.75)]
+\end{code}
 
 After which we can query the table
 
@@ -504,7 +523,9 @@ Nothing
 Similarly, it makes sense to implement a `toList` which will convert the
 map into an association list, we can reuse `foldBST` from before:
 
-> toList =  foldBST (\k v l r -> l ++ [(k, v)] ++ r) []
+\begin{code}
+toList =  foldBST (\k v l r -> l ++ [(k, v)] ++ r) []
+\end{code}
 
 Quiz
 ----
@@ -703,7 +724,7 @@ Suppose we had added
 
 ~~~~~{.haskell}
 data BST k v = Empty 
-             | Bind k v (BST k v) (BST k v) 
+             | Node k v (BST k v) (BST k v) 
              deriving (Eq, Show)
 ~~~~~
 
@@ -773,10 +794,10 @@ Ugh! Why did that happen? Well, lets see
 
 ~~~~~{.haskell}
 ghci> t
-Bind "chimichanga" 5.25 (Bind "burrito" 4.5 Empty Empty) (Bind "frijoles" 2.75 Empty Empty)
+Node "chimichanga" 5.25 (Node "burrito" 4.5 Empty Empty) (Node "frijoles" 2.75 Empty Empty)
 
 ghci> ofList (toList t)
-Bind "burrito" 4.5 Empty (Bind "chimichanga" 5.25 Empty (Bind "frijoles" 2.75 Empty Empty))
+Node "burrito" 4.5 Empty (Node "chimichanga" 5.25 Empty (Node "frijoles" 2.75 Empty Empty))
 ~~~~~
 
 The trees are different because they contain the keys in different
@@ -806,8 +827,10 @@ Quiz
 Thus, to define our own equality (and disequality) procedures 
 that are *robust* to ordering we might write:
 
-> instance (Eq k, Eq v) => Eq (BST k v) where
->   t1 == t2 = undefined -- toList t1 == toList t2 
+\begin{code}
+instance Eq (BST k v) where
+  t1 == t2 = toList t1 == toList t2 
+\end{code}
 
 Does it work?
 
@@ -815,7 +838,7 @@ a. *Yes*
 b. No, because the orders may differ.
 c. No, because it does not compile.
 d. No, because it is too slow.
-e. *Yes*
+e. None of the above.
 
 ~~~~~{.haskell}
 .
@@ -881,6 +904,13 @@ Unfortunately, there is no way for Haskell to *verify* that your implementations
 the laws, so this is something to be extra careful about, when using typeclasses.
 
 
+\begin{code}
+class JEQ a where
+  equals    :: a -> a -> Bool
+  notEq     :: a -> a -> Bool
+  notEq x y = not (equals x y) 
+\end{code}
+
 Creating Typeclasses
 ====================
 
@@ -917,33 +947,36 @@ In brief, each JSON object is either
 
 Thus, we can encode (a subset of) JSON values with the datatype
 
-> data JVal = JStr String
->           | JNum Double
->           | JBln Bool
->           | JObj [(String, JVal)]
->           | JArr [JVal]
->           deriving (Eq, Ord, Show)
+\begin{code}
+data JVal = JStr String
+          | JNum Double
+          | JBln Bool
+          | JObj [(String, JVal)]
+          | JArr [JVal]
+          deriving (Eq, Ord, Show)
+\end{code}
 
 Thus, the above JSON value would be represented by the `JVal`
 
-> js1 = 
->   JObj [("name", JStr "Ranjit")
->        ,("age",  JNum 33)
->        ,("likes",   JArr [ JStr "guacamole", JStr "coffee", JStr "bacon"])
->        ,("hates",   JArr [ JStr "waiting"  , JStr "grapefruit"])
->        ,("lunches", JArr [ JObj [("day",  JStr "monday") 
->                                 ,("loc",  JStr "zanzibar")]
->                          , JObj [("day",  JStr "tuesday") 
->                                 ,("loc",  JStr "farmers market")]
->                          , JObj [("day",  JStr "wednesday") 
->                                 ,("loc",  JStr "hare krishna")]
->                          , JObj [("day",  JStr "thursday") 
->                                 ,("loc",  JStr "faculty club")]
->                          , JObj [("day",  JStr "friday") 
->                                 ,("loc",  JStr "coffee cart")]
->                          ])
->        ]
-
+\begin{code}
+js1 = 
+  JObj [("name", JStr "Ranjit")
+       ,("age",  JNum 33)
+       ,("likes",   JArr [ JStr "guacamole", JStr "coffee", JStr "bacon"])
+       ,("hates",   JArr [ JStr "waiting"  , JStr "grapefruit"])
+       ,("lunches", JArr [ JObj [("day",  JStr "monday") 
+                                ,("loc",  JStr "zanzibar")]
+                         , JObj [("day",  JStr "tuesday") 
+                                ,("loc",  JStr "farmers market")]
+                         , JObj [("day",  JStr "wednesday") 
+                                ,("loc",  JStr "hare krishna")]
+                         , JObj [("day",  JStr "thursday") 
+                                ,("loc",  JStr "faculty club")]
+                         , JObj [("day",  JStr "friday") 
+                                ,("loc",  JStr "coffee cart")]
+                         ])
+       ]
+\end{code}
 
 Serializing Haskell Values to JSON
 ----------------------------------
@@ -952,42 +985,44 @@ Next, suppose that we want to write a small library to
 serialize Haskell values as JSON. We could write a bunch
 of functions like
 
-> doubleToJSON :: Double -> JVal 
-> doubleToJSON = JNum 
+\begin{code}
+doubleToJSON :: Double -> JVal 
+doubleToJSON = JNum 
+\end{code}
 
 similarly, we have 
 
-> stringToJSON :: String -> JVal
-> stringToJSON = JStr
->
-> boolToJSON   :: Bool -> JVal
-> boolToJSON   = JBln
+\begin{code}
+stringToJSON :: String -> JVal
+stringToJSON = JStr
+
+boolToJSON   :: Bool -> JVal
+boolToJSON   = JBln
+\end{code}
 
 But what about collections, namely objects and arrays? We might try
 
- foo   = bar . baz
- foo x = bar (baz x)
+\begin{code}
+doublesToJSON    :: [Double] -> JVal
+doublesToJSON xs = JArr [doubleToJSON x | x <- xs] 
 
+boolsToJSON      :: [Bool] -> JVal
+boolsToJSON xs   = JArr (map boolToJSON xs)
 
-
-> doublesToJSON :: [Double] -> JVal
-> doublesToJSON = JArr . map doubleToJSON
-
-> boolsToJSON   :: [Bool] -> JVal
-> boolsToJSON   = JArr . map boolToJSON
->
-> stringsToJSON :: [String] -> JVal
-> stringsToJSON = JArr . map stringToJSON 
-
+stringsToJSON    :: [String] -> JVal
+stringsToJSON xs = JArr (map stringToJSON xs)
+\end{code}
 
 which of course, you could abstract by making the
 *individual-element-converter* a parameter
 
-> xsToJSON :: (a -> JVal) -> [a] -> JVal
-> xsToJSON f  = JArr . map f 
->
-> xysToJSON :: (a -> JVal) -> [(String, a)] -> JVal
-> xysToJSON f kvs = JObj (map (second f) kvs)
+\begin{code}
+xsToJSON :: (a -> JVal) -> [a] -> JVal
+xsToJSON f xs = JArr (map f xs)
+
+xysToJSON :: (a -> JVal) -> [(String, a)] -> JVal
+xysToJSON f kvs = JObj [ (k, f v) | (k, v) <- kvs ]
+\end{code}
 
 
 but still, this is getting rather tedious, since we have to redefine
@@ -1007,12 +1042,14 @@ JObj [("day",JStr "monday"),("loc",JStr "zanzibar")]
 
 and this gets more hideous when you have richer objects like
 
-> lunches = [ [("day", "monday"),    ("loc", "zanzibar")] 
->           , [("day", "tuesday"),   ("loc", "farmers market")]
->           , [("day", "wednesday"), ("loc", "hare krishna")]
->           , [("day", "thursday"),  ("loc", "faculty club")]
->           , [("day", "friday"),    ("loc", "coffee cart")]
->           ]
+\begin{code}
+lunches = [ [("day", "monday"),    ("loc", "zanzibar")] 
+          , [("day", "tuesday"),   ("loc", "farmers market")]
+          , [("day", "wednesday"), ("loc", "hare krishna")]
+          , [("day", "thursday"),  ("loc", "faculty club")]
+          , [("day", "friday"),    ("loc", "coffee cart")]
+          ]
+\end{code}
 
 because we have to go through gymnastics like
 
@@ -1033,19 +1070,23 @@ Of course there is a better way, and the the route is paved by typeclasses!
 Lets define a typeclass that describes any type that can be converted to
 JSON.
 
-> class JSON a where
->   toJSON :: a -> JVal
+\begin{code}
+class JSON a where
+  toJSON :: a -> JVal
+\end{code}
 
 Easy enough. Now, we can make all the above instances of `JSON` like so
 
-> instance JSON Double where
->   toJSON = JNum 
->
-> instance JSON Bool where
->   toJSON = JBln
-> 
-> instance JSON String where
->   toJSON = JStr 
+\begin{code}
+instance JSON Double where
+  toJSON = JNum 
+
+instance JSON Bool where
+  toJSON = JBln
+
+instance JSON String where
+  toJSON = JStr 
+\end{code}
 
 Now, we can just say
 
@@ -1069,8 +1110,10 @@ The real fun begins when we get Haskell to automatically
 bootstrap the above functions to work for lists and 
 association lists!
 
-> instance (JSON a) => JSON [a] where
->   toJSON = JArr . map toJSON
+\begin{code}
+instance JSON a => JSON [a] where
+  toJSON xs = JArr [toJSON x | x <- xs]
+\end{code}
 
 Whoa! 
 
@@ -1091,8 +1134,10 @@ JArr [JArr [JStr "cat",JStr "dog"],JArr [JStr "mouse",JStr "rabbit"]]
 
 Of course, we can pull the same trick with key-value lists
 
-> instance (JSON a) => JSON [(String, a)] where
->   toJSON = JObj . map (second toJSON)
+\begin{code}
+instance (JSON a) => JSON [(String, a)] where
+  toJSON = JObj . map (second toJSON)
+\end{code}
 
 after which, we are all set!
 
@@ -1105,35 +1150,41 @@ It is also useful to bootstrap the serialization for tuples (upto some
 fixed size) so we can easily write "non-uniform" JSON objects where keys
 are bound to values with different shapes.
 
-> instance (JSON a, JSON b) => JSON ((String, a), (String, b)) where
->   toJSON ((k1, v1), (k2, v2)) = 
->     JObj [(k1, toJSON v1), (k2, toJSON v2)]
->
-> instance (JSON a, JSON b, JSON c) => JSON ((String, a), (String, b), (String, c)) where
->   toJSON ((k1, v1), (k2, v2), (k3, v3)) = 
->     JObj [(k1, toJSON v1), (k2, toJSON v2), (k3, toJSON v3)]
->
-> instance (JSON a, JSON b, JSON c, JSON d) => JSON ((String, a), (String, b), (String, c), (String,d)) where
->   toJSON ((k1, v1), (k2, v2), (k3, v3), (k4, v4)) = 
->     JObj [(k1, toJSON v1), (k2, toJSON v2), (k3, toJSON v3), (k4, toJSON v4)]
->
-> instance (JSON a, JSON b, JSON c, JSON d, JSON e) => JSON ((String, a), (String, b), (String, c), (String,d), (String, e)) where
->   toJSON ((k1, v1), (k2, v2), (k3, v3), (k4, v4), (k5, v5)) = 
->     JObj [(k1, toJSON v1), (k2, toJSON v2), (k3, toJSON v3), (k4, toJSON v4), (k5, toJSON v5)]
+\begin{code}
+instance (JSON a, JSON b) => JSON ((String, a), (String, b)) where
+  toJSON ((k1, v1), (k2, v2)) = 
+    JObj [(k1, toJSON v1), (k2, toJSON v2)]
+
+instance (JSON a, JSON b, JSON c) => JSON ((String, a), (String, b), (String, c)) where
+  toJSON ((k1, v1), (k2, v2), (k3, v3)) = 
+    JObj [(k1, toJSON v1), (k2, toJSON v2), (k3, toJSON v3)]
+
+instance (JSON a, JSON b, JSON c, JSON d) => JSON ((String, a), (String, b), (String, c), (String,d)) where
+  toJSON ((k1, v1), (k2, v2), (k3, v3), (k4, v4)) = 
+    JObj [(k1, toJSON v1), (k2, toJSON v2), (k3, toJSON v3), (k4, toJSON v4)]
+
+instance (JSON a, JSON b, JSON c, JSON d, JSON e) => JSON ((String, a), (String, b), (String, c), (String,d), (String, e)) where
+  toJSON ((k1, v1), (k2, v2), (k3, v3), (k4, v4), (k5, v5)) = 
+    JObj [(k1, toJSON v1), (k2, toJSON v2), (k3, toJSON v3), (k4, toJSON v4), (k5, toJSON v5)]
+\end{code}
 
 Now, we can simply write
 
-> hs = (("name"   , "Ranjit")
->      ,("age"    , 33 :: Double)
->      ,("likes"  , ["guacamole", "coffee", "bacon"])
->      ,("hates"  , ["waiting", "grapefruit"])
->      ,("lunches", lunches)
->      )
+\begin{code}
+hs = (("name"   , "Ranjit")
+     ,("age"    , 33 :: Double)
+     ,("likes"  , ["guacamole", "coffee", "bacon"])
+     ,("hates"  , ["waiting", "grapefruit"])
+     ,("lunches", lunches)
+     )
+\end{code}
 
 which is a Haskell value that describes our running JSON example, and can
 convert it directly like so
 
-> js2 = toJSON hs
+\begin{code}
+js2 = toJSON hs
+\end{code}
 
 This value is exactly equal to the old "hand-serialized" JSON object `js1`.
 
@@ -1149,26 +1200,29 @@ Why did we have to write a type annotation `33 :: Double` in the above
 example? Can you figure out a way to remove it?
 
 
-
 To wrap everything up, lets write a routine to serialize our `BST`
 maps.
 
--- > instance (JSON v) => JSON (BST String v) where
--- >   toJSON = JObj . map (second toJSON) . toList 
+\begin{code}
+instance (JSON v) => JSON (BST String v) where
+  toJSON m = undefined
+\end{code}
 
 Now lets make up a complex Haskell value with an embedded `BST`.
 
-> hs' = (("name"    , "el gordo taqueria")
->       ,("address" , "213 Delicious Street")
->       ,("menu"    , t))
+\begin{code}
+hs' = (("name"    , "el gordo taqueria")
+      ,("address" , "213 Delicious Street")
+      ,("menu"    , t))
+\end{code}
 
 and presto! our serializer *just works*
 
 ~~~~~{.haskell}
 ghci> t
-Bind "chimichanga" 5.25 
-  (Bind "burrito" 4.5 Empty Empty) 
-  (Bind "frijoles" 2.75 Empty Empty)
+Node "chimichanga" 5.25 
+  (Node "burrito" 4.5 Empty Empty) 
+  (Node "frijoles" 2.75 Empty Empty)
 
 ghci> :type hs'
 hs' :: (([Char], [Char]),
