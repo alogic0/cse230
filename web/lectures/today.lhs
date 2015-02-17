@@ -1,1179 +1,1208 @@
 ---
-title: Monadic Parsing 
+title: QuickCheck: Type-directed Property Testing
 ---
 
-<div class="hidden">
-\begin{code}
-{-@ LIQUID "--no-termination" @-}
-{-@ LIQUID "--short-names"    @-}
+> {-# LANGUAGE NoMonomorphismRestriction, FlexibleInstances, TypeSynonymInstances #-}
+> module Testing where 
+> import Test.QuickCheck hiding ((===))
+> import Control.Monad
+> import Data.List
+> import qualified Data.Map as M 
+> import Control.Monad.State hiding (when)
+> import Control.Applicative ((<$>))
  
-{-# LANGUAGE LambdaCase #-}
-import Data.Char
-import Data.Functor
-import Control.Monad
-\end{code}
-</div>
+In this lecture, we will look at [QuickCheck][1], a technique that
+cleverly exploits typeclasses and monads to deliver a powerful 
+automatic testing methodology. 
 
-Before we continue, a word from our sponsors: 
+Quickcheck was developed by [Koen Claessen][0] and [John Hughes][11] more
+than ten years ago, and has since been ported to other languages and
+is currently used, among other things to find subtle [concurrency bugs][3]
+in [telecommunications code][4].
 
-			**Don't Fear Monads**
+The key idea on which QuickCheck is founded, is *property-based testing*. 
+That is, instead of writing individual test cases (eg unit tests 
+corresponding to input-output pairs for particular functions) one 
+should write *properties* that are desired of the functions, and 
+then *automatically* generate *random* tests which can be run to
+verify (or rather, falsify) the property.
 
-They are simply an (extremely versatile) abstraction, like `map` or `fold`.
+By emphasizing the importance of specifications, QuickCheck yields 
+several benefits:
 
-What is a Parser?
------------------
+1. The developer is forced to think about what the code *should do*,
 
-A parser is a piece of software that takes a raw `String` (or sequence of
-bytes) and returns some structured object, for example, a list of options, 
-an XML tree or JSON object, a program's Abstract Syntax Tree and so on. 
-Parsing is one of the most basic computational tasks. *Every* serious 
-software system has a parser tucked away somewhere inside, for example
+2. The tool finds corner-cases where the specification is violated, 
+   which leads to either the code or the specification getting fixed,
 
-            System    Parses
-    --------------    ------------------------------
-     Shell Scripts    Command-line options
-          Browsers    HTML
-             Games    Level descriptors
-           Routers    Packets
+3. The specifications live on as rich, machine-checkable documentation
+   about how the code should behave.
+
+Properties
+==========
+
+A QuickCheck property is essentially a function whose output is a boolean.
+The standard "hello-world" QC property is
+
+> prop_revapp :: [Int] -> [Int] -> Bool
+> prop_revapp xs ys = reverse (xs ++ ys) == reverse xs ++ reverse ys
 
 
-(Indeed I defy you to find any serious system that *does not* do some
-parsing somewhere!)
+That is, a property looks a bit like a mathematical theorem that the
+programmer believes is true. A QC convention is to use the prefix `"prop_"`
+for QC properties. Note that the type signature for the property is not the 
+usual polymorphic signature; we have given the concrete type `Int` for the
+elements of the list. This is because QC uses the types to generate random
+inputs, and hence is restricted to monomorphic properties (that don't
+contain type variables.)
 
-The simplest and most accurate way to think of a parser is as a function 
+To *check* a property, we simply invoke the function
 
 ~~~~~{.haskell}
-type Parser = String -> StructuredObject
+quickCheck :: (Testable prop) => prop -> IO ()
+  	-- Defined in Test.QuickCheck.Test
 ~~~~~
 
-Composing Parsers
------------------
-
-The usual way to build a parser is by specifying a grammar and using a
-parser generator (eg yacc, bison, antlr) to create the actual parsing
-function. While elegant, one major limitation of the grammar based 
-approach is its lack of modularity. For example, suppose I have two 
-kinds of primitive values `Thingy` and `Whatsit`. 
+lets try it on our example property above
 
 ~~~~~{.haskell}
-Thingy : rule 	{ action } 
-;
-
-Whatsit : rule  { action }
-;
+ghci> quickCheck prop_revapp 
+*** Failed! Falsifiable (after 2 tests and 1 shrink):     
+[0]
+[1]
 ~~~~~
 
-If you want a parser for *sequences of* `Thingy` and `Whatsit` we have to 
-painstakingly duplicate the rules as
+Whats that ?! Well, lets run the *property* function on the two inputs
 
 ~~~~~{.haskell}
-Thingies : Thingy Thingies  { ... } 
-           EmptyThingy      { ... }
-;
-
-Whatsits : Whatsit Whatsits { ... }
-           EmptyWhatsit     { ... }
-;
+ghci> prop_revapp [0] [1] 
+False
 ~~~~~
 
-This makes sub-parsers hard to reuse. Next, we will see how to *compose* 
-mini-parsers for sub-values to get bigger parsers for complex values.
+QC has found a sample input for which the property function *fails* ie,
+returns `False`. Of course, those of you who are paying attention will
+realize there was a bug in our property, namely it should be
 
-To do so, we will generalize the above parser type a little bit, by noting 
-that a (sub-)parser need not (indeed, will not) consume consume *all* of 
-its input, and so we can simply have the parser return the unconsumed input
+> prop_revapp_ok :: [Int] -> [Int] -> Bool
+> prop_revapp_ok xs ys = reverse (xs ++ ys) == reverse ys ++ reverse xs
+
+because `reverse` will flip the order of the two parts `xs` and `ys` of 
+`xs ++ ys`. Now, when we run 
 
 ~~~~~{.haskell}
-type Parser = String -> (StructuredObject, String) 
+*Main> quickCheck prop_revapp_ok
++++ OK, passed 100 tests.
 ~~~~~
 
-Of course, it would be silly to have different types for parsers for
-different kinds of objects, and so we can make it a parameterized type
+That is, Haskell generated 100 test inputs and for all of those, the
+property held. You can up the stakes a bit by changing the number of
+tests you want to run
 
+> quickCheckN   :: (Testable p) => Int -> p -> IO () 
+> quickCheckN n = quickCheckWith $ stdArgs { maxSuccess = n }
+
+and then do
 
 ~~~~~{.haskell}
-type Parser a = String -> (a, String) 
+*Main> quickCheckN 10000 prop_revapp_ok
++++ OK, passed 10000 tests.
 ~~~~~
 
-One last generalization: the parser could return multiple results, for
-example, we may want to parse the string
+QuickCheck QuickSort
+--------------------
+
+Lets look at a slightly more interesting example. Here is the canonical 
+implementation of *quicksort* in Haskell.
+
+> qsort        :: (Ord a) => [a] -> [a]
+> qsort []     = []
+> qsort (x:xs) = qsort lhs ++ [x] ++ qsort rhs
+>   where lhs  = [y | y <- xs, y <= x]
+>         rhs  = [z | z <- xs, z > x]
+
+Really doesn't need much explanation! Lets run it "by hand" on a few inputs
 
 ~~~~~{.haskell}
-"2 - 3 - 4"
+ghci> [10,9..1]
+[10,9,8,7,6,5,4,3,2,1]
+ghci> qsort [10,9..1]
+[1,2,3,4,5,6,7,8,9,10]
+
+ghci> [2,4..20] ++ [1,3..11]
+[2,4,6,8,10,12,14,16,18,20,1,3,5,7,9,11]
+ghci> qsort $ [2,4..20] ++ [1,3..11]
+[1,2,3,4,5,6,7,8,9,10,11,12,14,16,18,20]
 ~~~~~
 
-either as
+Looks good -- lets try to test that the output is in 
+fact sorted. We need a function that checks that a 
+list is ordered
+
+> isOrdered ::         (Ord a) => [a] -> Bool
+> isOrdered (x1:x2:xs) = x1 <= x2 && isOrdered (x2:xs)
+> isOrdered _          = True
+
+and then we can use the above to write a property
+
+> prop_qsort_isOrdered :: [Int] -> Bool
+> prop_qsort_isOrdered = isOrdered . qsort
+
+Lets test it!
 
 ~~~~~{.haskell}
-Minus (Minus 2 3) 4
+ghci> quickCheckN 10000 prop_qsort_isOrdered 
++++ OK, passed 10000 tests.
 ~~~~~
 
-or as 
+Conditional Properties
+----------------------
+
+Here are several other properties that we 
+might want. First, repeated `qsorting` should not
+change the list. That is, 
+
+> prop_qsort_idemp ::  [Int] -> Bool 
+> prop_qsort_idemp xs = qsort (qsort xs) == qsort xs
+
+
+Second, the head of the result is the minimum element
+of the input
+
+> prop_qsort_min :: [Int] -> Bool
+> prop_qsort_min xs = head (qsort xs) == minimum xs
+
+However, when we run this, we run into a glitch
+
 
 ~~~~~{.haskell}
-Minus 2 (Minus 3 4)
-~~~~~
-
-So, we can have our parsers return a *list* of possible results (where the
-empty list corresponds to a failure to parse.)
-
-\begin{code}
-newtype Parser a = P (String -> [(a, String)])
-\end{code}
-
-The above is simply the parser (*cough* action) the actual parsing is done by
-
-\begin{code}
-doParse (P p) s = p s
-\end{code}
-
-Lets build some parsers!
-
-
-Parse A Single character
--------------------------
-
-**QUIZ**
-
-Recall
-
-~~~~~{.haskell}
-newtype Parser a = P (String -> [(a, String)])
-~~~~~
-
-Which of the following is a valid single-character-parser
-that returns the  **first** `Char` from a string (if one exists.)
-
-~~~~~{.haskell}
--- a
-oneChar = P $ \cs -> head cs
-
--- b
-oneChar = P $ \case -> {[] -> ['', []] | c:cs -> (c, cs)}
-
--- c
-oneChar = P $ \cs -> (head cs, tail cs)
-
--- d
-oneChar = P $ \cs -> [(head cs, tail cs)]
-
--- e
-oneChar = P $ \case -> { [] -> [] | cs -> [(head cs, tail cs)]}
-~~~~~
-
-~~~~~{.haskell}
-
-
-
-
-
-~~~~~
-
-Yes, we can!
-
-\begin{code}
-oneChar :: Parser Char
-oneChar = P (\cs -> case cs of
-               c:cs' -> [(c, cs')]
-               _     -> [])
-\end{code}
-
-Lets run the parser
-
-~~~~~{.haskell}
-ghci> doParse oneChar "hey!"
-[('h',"ey!")]
-
-ghci> doParse oneChar ""
+ghci> quickCheck prop_qsort_min 
+*** Failed! Exception: 'Prelude.head: empty list' (after 1 test):  
 []
 ~~~~~
 
-Now we can write another parser that grabs a **pair** of `Char` values
+But of course! The earlier properties held *for all inputs*
+while this property makes no sense if the input list is empty! 
+This is why thinking about specifications and properties has the 
+benefit of clarifying the *preconditions* under which a given 
+piece of code is supposed to work. 
+
+In this case we want a *conditional properties* where we only want 
+the output to satisfy to satisfy the spec *if* the input meets the
+precondition that it is non-empty.
+
+> prop_qsort_nn_min    :: [Int] -> Property
+> prop_qsort_nn_min xs = 
+>   not (null xs) ==> head (qsort xs) == minimum xs
+>
+> prop_qsort_nn_max    :: [Int] -> Property
+> prop_qsort_nn_max xs = 
+>   not (null xs) ==> head (reverse (qsort xs)) == maximum xs
+
+We can write a similar property for the maximum element too. This time
+around, both the properties hold
 
 ~~~~~{.haskell}
-twoChar :: Parser (Char, Char)
-twoChar  = P (\cs -> case cs of
-             c1:c2:cs' -> [((c1, c2), cs')]
-             _         -> [])
+ghci> quickCheckN 1000 prop_qsort_nn_min
++++ OK, passed 1000 tests.
+
+ghci> quickCheckN 1000 prop_qsort_nn_max
++++ OK, passed 1000 tests.
 ~~~~~
 
-Lets run the parser
+Note that now, instead of just being a `Bool` the output
+of the function is a `Property` a special type built into 
+the QC library. Similarly the *implies* combinator `==>` 
+is on of many QC combinators that allow the construction 
+of rich properties.
+
+
+Testing Against a Model Implementation
+--------------------------------------
+
+We could keep writing different properties that capture 
+various aspects of the desired functionality of `qsort`. 
+Another approach for validation is to test that our `qsort` 
+is *behaviourally* identical to a trusted *reference 
+implementation* which itself may be too inefficient or 
+otherwise unsuitable for deployment. In this case, lets 
+use the standard library's `sort` function
+
+> prop_qsort_sort    :: [Int] -> Bool
+> prop_qsort_sort xs =  qsort xs == sort xs
+
+which we can put to the test
 
 ~~~~~{.haskell}
-ghci> doParse twoChar "hey!"
-[(('h', 'e'), "y!")]
+ghci> quickCheckN 1000 prop_qsort_sort
+*** Failed! Falsifiable (after 4 tests and 1 shrink):     
+[-1,-1]
+~~~~~
 
-ghci> doParse twoChar "h"
-[]
+Say, what?!
+
+~~~~~{.haskell}
+ghci> qsort [-1,-1]
+[-1]
+~~~~~
+
+Ugh! So close, and yet ... Can you spot the bug in our code?
+
+~~~~~{.haskell}
+qsort []     = []
+qsort (x:xs) = qsort lhs ++ [x] ++ qsort rhs
+  where lhs  = [y | y <- xs, y < x]
+        rhs  = [z | z <- xs, z > x]
+~~~~~
+
+We're assuming that the *only* occurrence of (the value) `x` 
+is itself! That is, if there are any *copies* of `x` in the 
+tail, they will not appear in either `lhs` or `rhs` and hence
+they get thrown out of the output. 
+
+
+Is this a bug in the code? What *is* a bug anyway? Perhaps the
+fact that all duplicates are eliminated is a *feature*! At any 
+rate there is an inconsistency between our mental model of how 
+the code *should* behave as articulated in `prop_qsort_sort` 
+and the actual behavior of the code itself.
+
+We can rectify matters by stipulating that the `qsort` produces
+lists of distinct elements
+
+> isDistinct ::(Eq a) => [a] -> Bool
+> isDistinct (x:xs) = not (x `elem` xs) && isDistinct xs
+> isDistinct _      = True
+>
+> prop_qsort_distinct :: [Int] -> Bool 
+> prop_qsort_distinct = isDistinct . qsort  
+
+and then, weakening the equivalence to only hold on inputs that 
+are duplicate-free 
+
+> prop_qsort_distinct_sort :: [Int] -> Property 
+> prop_qsort_distinct_sort xs = 
+>   (isDistinct xs) ==> (qsort xs == sort xs)
+
+QuickCheck happily checks the modified properties
+
+~~~~~{.haskell}
+ghci> quickCheck prop_qsort_distinct
++++ OK, passed 100 tests.
+
+ghci> quickCheck prop_qsort_distinct_sort 
++++ OK, passed 100 tests.
 ~~~~~
 
 
-Parser Composition
-------------------
+The Perils of Conditional Testing
+---------------------------------
+
+Well, we managed to *fix* the `qsort` property, but beware! Adding
+preconditions leads one down a slippery slope. In fact, if we paid
+closer attention to the above runs, we would notice something
+
+~~~~~{.haskell}
+ghci> quickCheckN 10000 prop_qsort_distinct_sort 
+...
+(5012 tests; 248 discarded)
+...
++++ OK, passed 10000 tests.
+~~~~~
+
+The bit about some tests being *discarded* is ominous. In effect, 
+when the property is constructed with the `==>` combinator, QC 
+discards the randomly generated tests on which the precondition 
+is false. In the above case QC grinds away on the remainder until 
+it can meet its target of `10000` valid tests. This is because 
+the probability of a randomly generated list meeting the precondition 
+(having distinct elements) is high enough. This may not always be the case.
+
+The following code is (a simplified version of) the `insert` function 
+from the standard library 
+
+~~~~~{.haskell}
+insert x []                 = [x]
+insert x (y:ys) | x > y     = x : y : ys
+                | otherwise = y : insert x ys
+~~~~~
+
+Given an element `x` and a list `xs`, the function walks along `xs` 
+till it finds the first element greater than `x` and it places `x` 
+to the left of that element. Thus
+
+~~~~~{.haskell}
+ghci> insert 8 ([1..3] ++ [10..13])
+[1,2,3,8,10,11,12,13]
+~~~~~
+
+Indeed, the following is the well known [insertion-sort][5] algorithm
+
+> isort :: (Ord a) => [a] -> [a]
+> isort = foldr insert []
+
+We could write our own tests, but why do something a machine can do better?!
+
+> prop_isort_sort    :: [Int] -> Bool
+> prop_isort_sort xs = isort xs == sort xs
+
+~~~~~{.haskell}
+ghci> quickCheckN 10000 prop_isort_sort 
++++ OK, passed 10000 tests.
+~~~~~
+
+Now, the reason that the above works is that the `insert` 
+routine *preserves* sorted-ness. That is while of course 
+the property 
+
+> prop_insert_ordered'      :: Int -> [Int] -> Bool
+> prop_insert_ordered' x xs = isOrdered (insert x xs)
+
+is bogus
+
+~~~~~{.haskell}
+ghci> quickCheckN 10000 prop_insert_ordered' 
+*** Failed! Falsifiable (after 4 tests and 1 shrink):     
+0
+[0,-1]
+
+ghci> insert 0 [0, -1]
+[0, 0, -1]
+~~~~~
+
+the output *is* ordered if the input was ordered to begin with
+
+> prop_insert_ordered      :: Int -> [Int] -> Property 
+> prop_insert_ordered x xs = 
+>   isOrdered xs ==> isOrdered (insert x xs)
+
+Notice that now, the precondition is more *complex* -- the property 
+requires that the input list be ordered. If we QC the property
+
+~~~~~{.haskell}
+ghci> quickCheckN 10000 prop_insert_ordered
+*** Gave up! Passed only 35 tests.
+~~~~~
+
+Ugh! The ordered lists are so *sparsely* distributed 
+among random lists, that QC timed out well before it 
+found 10000 valid inputs!
+
+*Aside* the above example also illustrates the benefit of 
+writing the property as `p ==> q` instead of using the boolean
+operator `||` to write `not p || q`. In the latter case, there is 
+a flat predicate, and QC doesn't know what the precondition is,
+so a property may hold *vacuously*. For example consider the 
+variant
+
+> prop_insert_ordered_vacuous :: Int -> [Int] -> Bool
+> prop_insert_ordered_vacuous x xs = 
+>   not (isOrdered xs) || isOrdered (insert x xs)
+
+QC will happily check it for us
+
+~~~~~{.haskell}
+ghci> quickCheckN 1000 prop_insert_ordered_vacuous
++++ OK, passed 10000 tests.
+~~~~~
+
+Unfortunately, in the above, the tests passed *vacuously* 
+only because their inputs were *not* ordered, and one 
+should use `==>` to avoid the false sense of security 
+delivered by vacuity.
+
+QC provides us with some combinators for guarding against 
+vacuity by allowing us to investigate the *distribution* 
+of test cases
+
+~~~~~{.haskell}
+collect  :: Show a => a -> Property -> Property
+classify :: Bool -> String -> Property -> Property
+~~~~~
+
+We may use these to write a property that looks like
+
+> prop_insert_ordered_vacuous' :: Int -> [Int] -> Property 
+> prop_insert_ordered_vacuous' x xs = 
+>   -- collect (length xs) $
+>   classify (isOrdered xs) "ord" $
+>   classify (not (isOrdered xs)) "not-ord" $
+>   not (isOrdered xs) || isOrdered (insert x xs)
+
+When we run this, as before we get a detailed breakdown
+of the 100 passing tests
+
+~~~~~{.haskell}
+ghci> quickCheck prop_insert_ordered_vacuous'
++++ OK, passed 100 tests:
+ 9% 1, ord
+ 2% 0, ord
+ 2% 2, ord
+ 5% 8, not-ord
+ 4% 7, not-ord
+ 4% 5, not-ord
+ ...
+~~~~~
+
+where a line `P% N, COND` means that `p` percent of the inputs had length
+`N` and satisfied the predicate denoted by the string `COND`. Thus, as we
+see from the above, a paltry 13% of the tests were ordered and that was
+because they were either empty (`2% 0, ord`) or had one (`9% 1, ord`).
+or two elements (`2% 2, ord`). The odds of randomly stumbling upon a 
+beefy list that is ordered are rather small indeed!
+
+
+Generating Data
+===============
+
+Before we start discussing how QC generates data (and how we can help it
+generate data meeting some pre-conditions), we must ask ourselves a basic
+question: how does QC behave *randomly* in the first place?!
+
+~~~~~{.haskell}
+ghci> quickCheck prop_insert_ordered'
+*** Failed! Falsifiable (after 4 tests and 2 shrinks):    
+0
+[0,-1]
+
+ghci> quickCheck prop_insert_ordered'
+*** Failed! Falsifiable (after 5 tests and 5 shrinks):    
+0
+[1,0]
+~~~~~
+
+Eh? This seems most *impure* -- same inputs yielding two totally different
+outputs! Well, this should give you a clue as to one of the key techniques
+underlying QC -- **monads!** 
+
+The Generator Monad
+-------------------
+
+A Haskell term that generates a (random value) of type `a` has the type
+[`Gen a`][6] which is defined as
+
+~~~~~{.haskell}
+newtype Gen a = MkGen { unGen :: StdGen -> Int -> a }
+~~~~~
+
+In effect, the term is a function that takes as input a random number
+generator `StdGen` and a seed `Int` and returns an `a` value. One can
+easily (and we shall see, profitably!) turn `Gen` into a `Monad` by
+
+~~~~~{.haskell}
+instance Monad Gen where
+  return x =
+    MkGen (\_ _ -> x)
+  
+  MkGen m >>= k =
+    MkGen (\r n ->
+      let (r1, r2)  = split r
+          MkGen m' = k (m r1 n)
+       in m' r2 n
+    )
+~~~~~
+
+The function `split` simply *forks* the random number generator into two
+parts; which are used by the left and right parameters of the bind
+operator `>>=`. (*Aside* you should be able to readily spot the 
+similarity between random number generators and the `ST` monad -- 
+in both cases the basic action is to grab some value and transition 
+the *state* to the next-value. For more details see [Chapter 14, RWH][7])
+
+The Arbitrary Typeclass
+-----------------------
+
+QC uses the above to define a typeclass for types for which
+random values can be generated!
+
+~~~~~{.haskell}
+class Show a where
+  show :: a -> String
+
+class Arbitrary a where
+  arbitrary :: Gen a
+~~~~~
+
+> gimmeInts :: IO [Int]
+> gimmeInts = sample' arbitrary
+
+Thus, to have QC work with (ie generate random tests for) values of type
+`a` we need only make `a` an instance of `Arbitrary` by defining an
+appropriate `arbitrary` function for it. QC defines instances for base
+types like `Int` , `Float`, lists etc and lifts them to compound types
+much like we did for `JSON` a [few lectures back](/lectures/lec5.html)
+
+~~~~~{.haskell}
+instance (Arbitrary a, Arbitrary b) => Arbitrary (a,b) where
+  arbitrary = do x <- arbitrary
+                 y <- arbitrary 
+                 return (x,y)
+~~~~~
+
+or more simply
+
+~~~~~{.haskell}
+instance (Arbitrary a, Arbitrary b) => Arbitrary (a,b) where
+  arbitrary = liftM2 (,) arbitrary arbitrary
+
+do x <- mx
+   y <- my
+   return $ f x y
+~~~~~
+
+
+Generator Combinators
+---------------------
+
+QC comes loaded with a set of combinators that allow us to create 
+custom instances for our own types.
+
+The first of these combinators is `choose`
+
+~~~~~{.haskell}
+choose :: (System.Random.Random a) => (a, a) -> Gen a
+~~~~~
+
+which takes an *interval* and returns an random element from that interval.
+(The typeclass `System.Random.Random` describes types which can be
+*sampled*. For example, the following is a randomly chosen set of numbers
+between `0` and `3`.
+
+~~~~~{.haskell}
+ghci> sample $ choose (0, 3)
+2
+1
+0
+2
+1
+0
+2
+3
+0
+0
+~~~~~
 
 QUIZ
 ----
 
-Recall
+What is a plausible type for `sample`? 
+
+
+a. `Gen a -> [a]`
+b. `Gen a -> Gen [a]`
+c. `Gen a -> IO [a]`
+d. `Gen a -> IO a`
+e. `a -> Gen [a]`
+
+
+A second useful combinator is `elements` 
 
 ~~~~~{.haskell}
-twoChar :: Parser (Char, Char)
-twoChar  = P (\cs -> case cs of
-             c1:c2:cs' -> [((c1, c2), cs')]
-             _         -> [])
+elements :: [a] -> Gen a
 ~~~~~
 
-Suppose we had some `foo` such that behaved **identically** to `twoChar`.
+fmap :: (a -> b) -> (m a) -> (m b)
+fmap f m = do x <- m 
+              return (f x)
 
-~~~~~{.haskell}
-twoChar' = foo oneChar oneChar 
-~~~~~
+elements xs = do i <- choose (0, (length xs) - 1)
+                 return (xs !! i)
 
-What must the type of `foo` be?
+elements xs = (xs !!) <$> choose (0, length xs - 1)
 
-a. `Parser (Char, Char)` 
-b. `Parser Char -> Parser (Char, Char)`
-c. `Parser a -> Parser a -> Parser (a, a)` 
-d. `Parser a -> Parser b -> Parser (a, b)` 
-e. `Parser a -> Parser (a, a)` 
 
-~~~~~{.haskell}
-
-
-
-
-
-
-~~~~~
-
-Indeed, `foo` is a **parser combinator** that takes two parsers and returns a 
-new parser that returns a pair of values:
-
-~~~~~{.haskell}
-pairP ::  Parser a -> Parser b -> Parser (a, b)
-pairP p1 p2 = P (\cs -> 
-  [((x,y), cs'') | (x, cs' ) <- doParse p1 cs, 
-                   (y, cs'') <- doParse p2 cs']
-  )
-~~~~~
-
-Now we can more cleanly write:
-
-\begin{code}
-twoChar = pairP oneChar oneChar 
-\end{code}
-
-which would run like this
-
-~~~~~{.haskell}
-ghci> doParse twoChar "hey!"
-[(('h','e'), "y!")]
-~~~~~
-
-**EXERCISE:** Can you explain why we get the following behavior?
-
-~~~~~{.haskell}
-ghci> doParse twoChar "h"
-[]
-~~~~~
-
-
-Now we could keep doing this, but often to go forward, it is helpful to
-step back and take a look at the bigger picture.
-
-Here's the the **type** of a parser
-
-~~~~~{.haskell}
-newtype Parser a = P (String -> [(a, String)])
-~~~~~
-
-it should remind you of something else, remember this?
-
-~~~~~{.haskell}
-type ST a = S (State -> (a, State))
-~~~~~
-
-*(drumroll...)*
-
-
-
-Parser is A Monad
------------------
-
-Indeed, a parser, like a state transformer, [is a monad!][2] 
-if you squint just the right way. 
-
-We need to define the `return` and `>>=` functions. 
-
-The bind is a bit tricky, but we just saw it above!
-
-~~~~~{.haskell}
-:type bindP 
-bindP :: Parser a -> (a -> Parser b) -> Parser b
-~~~~~
-
-so, we need to suck the `a` values out of the first 
-parser and invoke the second parser with them on the 
-remaining part of the string.
-
-
-QUIZ
-----
-
-Recall
-
-~~~~~{.haskell}
-doParse           :: Parser a -> String -> [(a, String)]
-doParse (P p) str = p str
-~~~~~
-
-Consider the function `bindP`:
-
-~~~~~{.haskell}
-bindP :: Parser a -> (a -> Parser b) -> Parser b
-bindP p1 fp2 = P $ \cs -> [(y, cs'') | (x, cs')  <- undefined -- 1 
-                                     , (y, cs'') <- undefined -- 2
-                          ]
-~~~~~
-
-What shall we fill in for the two `undefined` to get the code to typecheck?
-
-a. `p1 cs` and `fp2 x cs`
-b. `doParse p1 cs` and `doParse (fp2 x) cs'`
-c. `p1 cs` and `fp2 x cs'`
-d. `doParse p1 cs` and `doParse (fp2 x) cs`
-e. `doParse p1 cs` and `doParse fp2 x cs'`
-
-
-~~~~~{.haskell}
-
-
-
-
-
-~~~~~
-
-Indeed, we can define the `bindP` function for `Parser`s as:
-
-\begin{code}
-bindP p1 fp2 = P $ \cs -> [(y, cs'') | (x, cs')  <- doParse p1 cs
-                                     , (y, cs'') <- doParse (fp2 x) cs']
-
-returnP   :: a -> Parser a
-returnP x = P $ \cs -> [(x, cs)] 
-
-\end{code}
-
-See how we suck the `a` values out of the first 
-parser (by running `doParse`) and invoke the second 
-parser on each possible `a` (and the remaining string) 
-to obtain the final `b` and remainder string tuples.
-
-The `return` is very simple, we can let the types guide us
-
-~~~~~{.haskell}
-:type returnP
-returnP :: a -> Parser a
-~~~~~
-
-which means we must ignore the input string and just return the input element
-
-\begin{code}
-returnP x = P (\cs -> [(x, cs)])
-\end{code}
-
-Armed with those, we can officially brand parsers as monads
-
-\begin{code}
-instance Monad Parser where
-  (>>=)  = bindP
-  return = returnP
-\end{code}
-
-This is going to make things really sweet...
-
-Parser Combinators
-------------------
-
-Since parsers are monads, we can write a bunch of **high-level combinators**
-for composing smaller parsers into bigger ones.
-
-For example, we can use our beloved `do` notation to rewrite `pairP` as
-
-\begin{code}
-pairP       :: Parser a -> Parser b -> Parser (a, b)
-pairP px py = do x <- px
-                 y <- py
-                 return (x, y)
-\end{code}
-
-shockingly, exactly like the `pairs` function [from here](/lectures/monads2.html).
-
-Next, lets flex our monadic parsing muscles and write some new 
-parsers. It will be helpful to have a a *failure* parser that 
-always goes down in flames, that is, returns `[]` -- **no** 
-successful parses.
-
-\begin{code}
-failP = P $ \_ -> []
-\end{code}
-
-Seems a little silly to write the above, but its helpful to build 
-up richer parsers like the following which parses a `Char` *if* 
-it satisfies a predicate `p`
-
-\begin{code}
-satP ::  (Char -> Bool) -> Parser Char
-satP p = do c <- oneChar 
-            if p c then return c else failP
-\end{code}
-
-we can write some simple parsers for particular characters 
-
-\begin{code}
-lowercaseP = satP isAsciiLower
-\end{code}
-
-~~~~~{.haskell}
-ghci> doParse (satP ('h' ==)) "mugatu"
-[]
-
-ghci> doParse (satP ('h' ==)) "hello"
-[('h',"ello")]
-~~~~~
-
-The following parse alphabet and numeric characters respectively
-
-\begin{code}
-alphaChar = satP isAlpha
-digitChar = satP isDigit
-\end{code}
-
-and this little fellow returns the first digit in a string as an `Int`
-
-
-
-
-\begin{code}
-digitInt  = do c <- digitChar
-               return ((read [c]) :: Int)
-\end{code}
-
-
-
-
-
-which works like so
-
-~~~~~{.haskell}
-ghci> doParse digitInt "92"
-[(9,"2")]
-
-ghci> doParse digitInt "cat"
-[]
-~~~~~
-
-Finally, this parser will parse only a particular `Char` passed in as input
-
-\begin{code}
-char c = satP (== c)
-
-dogeP :: Parser String
-dogeP = do char 'd'
-           char 'o'
-           char 'g'
-           char 'e'
-           return "doge"
-
-str :: String -> Parser String
-str = mmapM char
-
-mmapM f []     = return []
-mmapM f (x:xs) = do y  <- f x
-                    ys  <- mmapM f xs
-                    return (y:ys)
-\end{code}
-
-**EXERCISE:** Write a function `strP :: String -> Parser String` such that
-`strP s` parses **exactly** the string `s` and nothing else, that is,
-
-~~~~~{.haskell}
-ghci> dogeP = strP "doge"
-
-ghci> doParse dogeP "dogerel"
-[("doge", "rel")]
-
-ghci> doParse dogeP "doggoneit"
-[]
-~~~~~
-
-
-A Nondeterministic Choice Combinator
-------------------------------------
-
-Next, lets write a combinator that takes two sub-parsers and 
-**non-deterministically chooses** between them. 
-
-~~~~~{.haskell}
-chooseP :: Parser a -> Parser a -> Parser a
-~~~~~
-
-That is, we want `chooseP p1 p2` to return a succesful parse
-if *either* `p1` or `p2` succeeds. 
-
-We can use `chooseP` to build a parser that returns either 
-an alphabet or a numeric character
-
-\begin{code}
-alphaNumChar = alphaChar `chooseP` digitChar
-\end{code}
-
-After defining the above, we should get something like:
-
-~~~~~{.haskell}
-ghci> doParse alphaNumChar "cat"
-[('c', "at")]
-ghci> doParse alphaNumChar "2cat"
-[('2', "cat")]
-ghci> doParse alphaNumChar "230"
-[('2', "30")]
-~~~~~
-
-**QUIZ**
-
-How would we go about encoding **choice** in our parsers? 
-
-~~~~~{.haskell}
--- a 
-p1 `chooseP` p2 = do xs <- p1
-                     ys <- p2
-                     return (x1 ++ x2) 
--- b
-p1 `chooseP` p2 = do xs <- p1 
-                     case xs of 
-                       [] -> p2 
-                       _  -> return xs
-
--- c
-p1 `chooseP` p2 = P $ \cs -> doParse p1 cs ++ doParse p2 cs
-
--- d
-p1 `chooseP` p2 = P $ \cs -> case doParse p1 cs of
-                               [] -> doParse p2 cs
-                               rs -> rs
-~~~~~
-
-~~~~~{.haskell}
-
-
-
-
-
-
-~~~~~
-
-
-\begin{code}
-
-chooseP :: Parser a -> Parser a -> Parser a
-p1 `chooseP` p2 = P (\cs -> doParse p1 cs ++ doParse p2 cs)
-\end{code}
-
-Thus, what is even nicer is that if *both* parsers succeed, 
-you end up with all the results. 
-
-Here's a parser that grabs `n` characters from the input 
-
-\begin{code}
-grabn :: Int -> Parser String 
-grabn n 
-  | n <= 0    = return ""
-  | otherwise = do c  <- oneChar  
-                   cs <- grabn (n-1)
-                   return (c:cs)
-\end{code}
-
-**DO IN CLASS** How would you nuke the nasty recursion from `grabn` ?
-
-**QUIZ**
-
-Lets now use our choice combinator to define:
-
-\begin{code}
-foo = grabn 2 `chooseP` grabn 4
-\end{code}
-
-What does the following evaluate to?
-
-~~~~~{.haskell}
-ghci> doParse foo "mickeymouse"
-~~~~~
-
-a. `[]`
-b. `[("mi","ckeymouse")]`
-c. `[("mick","eymouse")]`
-d. `[("mi","ckeymouse"),("mick","eymouse")]`
-e. `[("mick","eymouse"), ("mi","ckeymouse")]`
-
-
-~~~~~{.haskell}
-
-
-
-~~~~~
-
-and only one result if thats possible
-
-~~~~~{.haskell}
-ghci> doParse grab2or4 "mic"
-[("mi","c")]
-
-ghci> doParse grab2or4 "m"
-[]
-~~~~~
-
-Even with the rudimentary parsers we have at our disposal, we can start
-doing some rather interesting things. For example, here is a little
-calculator. First, we parse the operation
-
-\begin{code}
-intOp      = plus `chooseP` minus `chooseP` times `chooseP` divide 
-  where 
-    plus   = char '+' >> return (+)
-    minus  = char '-' >> return (-)
-    times  = char '*' >> return (*)
-    divide = char '/' >> return div
-\end{code}
-
-**DO IN CLASS** 
-Can you guess the type of the above parser?
-
-
-Next, we can parse the expression
-
-\begin{code}
-calc = do x  <- digitInt
-          op <- intOp
-          y  <- digitInt 
-          return $ x `op` y
-\end{code}
-
-which, when run, will both parse and calculate
-
-~~~~~{.haskell}
-ghci> doParse calc "8/2"
-[(4,"")]
-
-ghci> doParse calc "8+2cat"
-[(10,"cat")]
-
-ghci> doParse calc "8/2cat"
-[(4,"cat")]
-
-ghci> doParse calc "8-2cat"
-[(6,"cat")]
-
-ghci> doParse calc "8*2cat"
-[(16,"cat")]
-~~~~~
-
-**QUIZ**
-
-What does the following return:
-
-~~~~~{.haskell}
-ghci> doParse calc "99bottles"
-~~~~~
-
-a. Type error
-b. `[]`
-c. `[(9, "9bottles")]`
-d. `[(99, "bottles")]`
-e. Run-time exception
-
-
-Recursive Parsing
------------------
-
-To start parsing interesting things, we need to add recursion 
-to our combinators. For example, its all very well to parse 
-individual characters (as in `char` above) but it would a lot 
-more swell if we could grab particular `String` tokens. 
-
-Lets try to write it! 
-
-~~~~~{.haskell}
-string :: String -> Parser String
-string ""     = return ""
-string (c:cs) = do char c
-                   string cs
-                   return (c:cs)
-~~~~~
-
-**DO IN CLASS**
-Ewww! Is that explicit recursion ?! Lets try again (can you spot the pattern)
-
-\begin{code}
-string :: String -> Parser String
-string = undefined -- fill this in
-\end{code}
-
-
-Much better!
-
-~~~~~{.haskell}
-ghci> doParse (string "mic") "mickeyMouse"
-[("mic","keyMouse")]
-
-ghci> doParse (string "mic") "donald duck"
-[]
-~~~~~
-
-Ok, I guess that wasn't really recursive then after all! 
-
-Lets try again.
-
-Lets write a combinator that takes a parser `p` that 
-returns an `a` and returns a parser that returns *many* 
-`a` values. That is, it keeps grabbing as many `a` values 
-as it can and returns them as a `[a]`.
-
-\begin{code}
-manyP     :: Parser a -> Parser [a]
-manyP p   = many1 `chooseP` many0 
-  where 
-    many0 = return []
-    many1 = do x  <- p
-               xs <- manyP p
-               return (x:xs)
-\end{code}
-
-But beware! The above can yield *many* results
-
-~~~~~{.haskell}
-ghci> doParse (manyP digitInt) "123a" 
-[([], "123a"), ([1], "23a"),([1, 2], "3a"),([1, 2, 3], "a")]
-~~~~~
-
-which is simply all the possible ways to extract sequences 
-of integers from the input string.
-
-Deterministic Maximal Parsing
------------------------------
-
-Often we want a single result, not a set of results. For example,
-the more intuitive behavior of `many` would be to return the maximal
-sequence of elements and not *all* the prefixes.
-
-To do so, we need a *deterministic* choice combinator
-
-\begin{code}
-(<|>) :: Parser a -> Parser a -> Parser a
-p1 <|> p2 = P $ \cs -> case doParse (p1 `chooseP` p2) cs of
-                         []  -> []
-                         x:_ -> [x]
-\end{code}
-
-The above runs choice parser but returns only the first result. 
-Now, we can revisit the `manyP` combinator and ensure that it 
-returns a single, maximal sequence
-
-\begin{code}
-mmanyP     :: Parser a -> Parser [a]
-mmanyP p   = mmany1 <|> mmany0
-  where 
-    mmany0 = return []
-    mmany1 = do x  <- p
-                xs <- mmanyP p
-                return (x:xs)
-\end{code}
-
-**DO IN CLASS** 
-Wait a minute! What exactly is the difference between the above and 
-the original `manyP`? How do you explain this:
-
-~~~~~{.haskell}
-ghci> doParse (manyP digitInt) "123a" 
-[([1,2,3],"a"),([1,2],"3a"),([1],"23a"),([],"123a")]
-
-ghci> doParse (mmanyP digitInt) "123a" 
-[([1,2,3],"a")]
-~~~~~
-
-Lets use the above to write a parser that will return an entire integer
-(not just a single digit.)
-
-
-
-~~~~~{.haskell}
-oneInt :: Parser Integer
-oneInt = do xs <- mmanyP digitChar 
-            return $ ((read xs) :: Integer)
-~~~~~
-
-*Aside*, can you spot the pattern above? We took the 
-parser `mmanyP digitChar` and simply converted its output
-using the `read` function. This is a recurring theme, and 
-the type of what we did gives us a clue
-
-~~~~~{.haskell}
-(a -> b) -> Parser a -> Parser b
-~~~~~
-
-Aha! a lot like `map`. Indeed, there is a generalized version
-of `map` that we have seen before (`lift1`) and we bottle up 
-the pattern by declaring `Parser` to be an instance of the 
-`Functor` typeclass
-
-\begin{code}
-instance Functor Parser where
-  fmap f p = do x <- p
-                return (f x)
-\end{code}
-
-after which we can rewrite
-
-\begin{code}
-oneInt ::  Parser Int
-oneInt = read `fmap` mmanyP digitChar 
-\end{code}
-
-Lets take it for a spin
-
-~~~~~{.haskell}
-ghci> doParse oneInt "123a"
-[(123, "a")]
-~~~~~
-
-
-Parsing Arithmetic Expressions
-------------------------------
-
-
-Lets use the above to build a small calculator, that
-parses and evaluates arithmetic expressions. In essence, 
-an expression is either binary operand applied to two 
-sub-expressions or an integer. We can state this as
-
-\begin{code}
-calc0      ::  Parser Int
-calc0      = binExp <|> oneInt 
-  where 
-    binExp = do x <- oneInt
-                o <- intOp 
-                y <- calc0 
-                return $ x `o` y
-\end{code}
-
-This works pretty well!
-
-~~~~~{.haskell}
-ghci> doParse calc0 "1+2+33"
-[(36,"")]
-
-ghci> doParse calc0 "11+22-33"
-[(0,"")]
-~~~~~
-
-but things get a bit strange with minus
-
-~~~~~{.haskell}
-ghci> doParse calc0 "11+22-33+45"
-[(-45,"")]
-~~~~~
-
-Huh? Well, if you look back at the code, you'll realize the 
-above was parsed as
-
-~~~~~{.haskell}
-11 + ( 22 - (33 + 45))
-~~~~~
-
-because in each `binExp` we require the left operand to be 
-an integer. In other words, we are assuming that each 
-operator is *right associative* hence the above result. 
-
-
-I wonder if we can try to fix it just by flipping the order
-
-\begin{code}
-calc1      ::  Parser Int
-calc1      = binExp <|> oneInt 
-  where 
-    binExp = do x <- calc1 
-                o <- intOp 
-                y <- oneInt
-                return $ x `o` y
-\end{code}
-
-**QUIZ**
-
-What does the following evaluate to?
-
-~~~~~{.haskell}
-ghci> doParse calc1 "11+22-33+45"
-~~~~~
-
-a. `[( 11 , "+22-33+45")]`
-b. `[( 33 , "-33+45")]`
-c. `[( 0, "+45")]`
-d. `[( 45 , "")]`
-e. None of the above 
-
-
-
-~~~~~{.haskell}
-
-
-
-
-
-
-~~~~~
-
-Indeed, there is a bug here ... can you figure it out? 
-
-**Hint:** what will the following return?
-
-~~~~~{.haskell}
-ghci> doParse calc1 "2+2"
-~~~~~
-
-Even worse, we have no precedence, and so
-
-~~~~~{.haskell}
-ghci> doParse calc0 "10*2+100"
-[(1020,"")]
-~~~~~
-
-as the string is parsed as
-
-~~~~~{.haskell}
-10 * (2 + 100)
-~~~~~
-
-
-
-
-
-Precedence
-----------
-
-We can add both associativity and precedence, by stratifying the 
-parser into different levels. Here, lets split our operations 
-into addition- 
-
-\begin{code}
-addOp       = plus `chooseP` minus 
-  where 
-    plus    = char '+' >> return (+)
-    minus   = char '-' >> return (-)
-\end{code}
-
-and multiplication-precedence.
-
-\begin{code}
-mulOp       = times `chooseP` divide 
-  where 
-    times   = char '*' >> return (*)
-    divide  = char '/' >> return div
-\end{code}
-
-Now, we can stratify our language into (mutually recursive) sub-languages, 
-where each top-level expression is parsed as a **sum-of-products** 
-
-\begin{code}
-sumE     = addE <|> prodE 
-  where 
-    addE = do x <- prodE 
-              o <- addOp
-              y <- sumE 
-              return $ x `o` y
-
-prodE    = mulE <|> factorE
-  where 
-    mulE = do x <- factorE
-              o <- mulOp
-              y <- prodE 
-              return $ x `o` y
-
-factorE = parenP sumE <|> oneInt
-\end{code}
-
-We can run this 
-
-~~~~~{.haskell}
-ghci> doParse sumE "10*2+100"
-[(120,"")]
-
-ghci> doParse sumE "10*(2+100)"
-[(1020,"")]
-~~~~~
-
-Do you understand why the first parse returned `120` ?
-What would happen if we *swapped* the order of `prodE`
-and `sumE` in the body of `addE` (or `factorE` and `prodE` 
-in the body of `prodE`) ? Why?
-
-**QUIZ**
-
-Recall that in the above,
-
-~~~~~{.haskell}
-factorE :: Parser Int
-factorE = parenP sumE <|> oneInt
-~~~~~
-
-What is the type of `parenP` ?
-
-a. `Parser Int`
-b. `Parser a -> Parser a`
-c. `a -> Parser a`
-d. `Parser a -> a`
-e. `Parser Int -> Parser a` 
-
-~~~~~{.haskell}
-
-
-
-
-~~~~~
-
-Lets write `parenP`
-
-\begin{code}
-parenP p = do char '(' 
-              x <- p
-              char ')'
+oneOf     :: [Gen a] -> Gen a
+oneOf gs = do g <- elements gs
+              x <- g
               return x
-\end{code}
 
-Parsing Pattern: Chaining
+
+which returns a generator that produces values drawn from the input list
+
+~~~~~{.haskell}
+ghci> sample $ elements [10, 20..100]
+60
+70
+30
+50
+30
+20
+20
+10
+100
+80
+10
+~~~~~
+
+A third combinator is `oneof` 
+
+~~~~~{.haskell}
+oneof :: [Gen a] -> Gen a
+~~~~~
+
+which allows us to randomly choose between multiple generators
+
+~~~~~{.haskell}
+ghci> sample $ oneof [elements [10,20,30], choose (0,3)]
+10
+0
+10
+1
+30
+1
+20
+2
+20
+3
+30
+~~~~~
+
+EXERCISE
+--------
+
+Lets try to figure out the **implementation** of `oneOf`
+
+~~~~~{.haskell}
+oneOf :: [Gen a] -> Gen a
+oneOf = error "LETS DO THIS IN CLASS"
+~~~~~
+
+
+Finally, `oneOf` is generalized into the `frequency` combinator 
+
+~~~~~{.haskell}
+frequency :: [(Int, Gen a)] -> Gen a
+~~~~~
+
+which allows us to build weighted combinations of individual generators.
+
+
+Generating Ordered Lists
+------------------------
+
+We can use the above combinators to write generators for lists 
+
+> genList1 ::  (Arbitrary a) => Gen [a]
+> genList1 = liftM2 (:) arbitrary genList1
+
+Can you spot a problem in the above? 
+
+~~~~~{.haskell}
+-- btw, don't freak out, remember that 
+
+liftM2 f mx my = do x <- m1
+                    y <- m2
+                    return $ f x y
+
+-- So the above is the same as
+
+genList1 = do x  <- arbitrary
+              xs <- gentList1
+              return $ x : xs
+~~~~~
+
+
+
+**Problem**: `genList1` only generates infinite lists! Hmm. Lets try again,
+
+> genList2 ::  (Arbitrary a) => Gen [a]
+> genList2 = oneof [ return []
+>                  , liftM2 (:) arbitrary genList2]
+
+This is not bad, but we may want to give the generator a higher 
+chance of not finishing off with the empty list, so lets use
+
+> genList3 ::  (Arbitrary a) => Gen [a]
+> genList3 = frequency [ (1, return [])
+>                      , (7, liftM2 (:) arbitrary genList2) ]
+
+We can use the above to build a custom generator that always returns
+*ordered lists* by piping the generate list into the `sort` function
+
+> genOrdList :: (Ord a, Arbitrary a) => Gen [a]
+> genOrdList = sort <$> genList3 
+
+~~~~~{.haskell}
+-- again, remember that, <$> is just `fmap` where:
+
+fmap f m = do {x <- m; return (f x)} 
+
+-- so really the above is the same as:
+
+genOrdList = do { x <- genList3 ; return (sort x) }
+~~~~~
+
+To *check* the output of a custom generator we can use the `forAll` combinator
+
+~~~~~{.haskell}
+forAll :: (Show a, Testable prop) => Gen a -> (a -> prop) -> Property
+~~~~~
+
+For example, we can check that in fact, the combinator only produces
+ordered lists
+
+~~~~~
+ghci> quickCheckN 1000 $ forAll genOrdList isOrdered 
++++ OK, passed 1000 tests.
+~~~~~
+
+and now, we can properly test the `insert` property
+
+> prop_insert :: Int -> Property 
+> prop_insert x = forAll genOrdList $ \xs -> isOrdered xs && isOrdered (insert x xs)
+
+~~~~~
+ghci> quickCheckN 1000 prop_insert 
++++ OK, passed 1000 tests.
+~~~~~
+
+Case Study : Checking Compiler Optimizations
+============================================
+
+Next, lets look at how QC can be used to generate structured data, 
+by doing a small case-study on checking a compiler optimization. 
+
+Recall the small *While* language that you wrote an evaluator for 
+in [HW2](/homeworks/hw2.html). 
+
+While: Syntax
+-------------
+
+The languages had arithmetic expressions 
+
+> data Expression 
+>   = Var   Variable
+>   | Val   Value
+>   | Plus  Expression Expression
+>   | Minus Expression Expression
+>   deriving (Eq, Ord)
+
+where the atomic expressions were either variables or values
+
+> data Variable = V String deriving (Eq, Ord)
+>
+> data Value 
+>   = IntVal Int
+>   | BoolVal Bool
+>   deriving (Eq, Ord)
+
+We used the expressions to define imperative *statements* which are either
+assignments, if-then-else, a sequence of two statements, or a while-loop.
+
+> data Statement
+>   = Assign   Variable   Expression
+>   | If       Expression Statement  Statement
+>   | While    Expression Statement
+>   | Sequence Statement  Statement
+>   | Skip
+>   deriving (Eq, Ord)
+
+
+While: Semantics
+----------------
+
+The behavior of *While* programs was given using a *state* which is simply
+a map from variables to values. Intuitively, a statement will *update* the
+state by modifying the values of the variables appropriately.
+
+> type WState = M.Map Variable Value
+
+Your assignment was to (use the `State` monad to) write an evaluator 
+(aka interpreter) for the language that took as input a program and 
+a starting state and returned the final state.
+
+> execute ::  WState -> Statement -> WState
+> execute env = flip execState env . evalS
+
+Since you wrote the code for the HW (you **DID** didn't you?) we won't go
+into the details now -- scroll down to the bottom to see how `evalS` is
+implemented.
+
+Generating While Programs
 -------------------------
 
-There is not much point gloating about combinators if we are 
-going to write code like the above -- the bodies  of `sumE` 
-and `prodE` are almost identical!
+We could painstakingly write manual test cases, but instead lets write some
+simple generators for *While* programs, so that we can then check
+interesting properties of the programs and the evaluator.
 
-Lets take a closer look at them. In essence, a `sumE` is 
-of the form
+First, lets write a generator for variables.
 
-~~~~~{.haskell}
-prodE + < prodE + < prodE + ... < prodE >>>
-~~~~~
+> instance Arbitrary Variable where 
+>   arbitrary = do x <- elements ['A'..'Z']
+>                  return $ V [x]
 
-that is, we keep chaining together `prodE` values and 
-adding them for as long as we can. Similarly a `prodE` 
-is of the form
+thus, we assume that the programs are over variables drawn from the
+uppercase alphabet characters. That is, our test programs range over 26
+variables (you can change the above if you like.)
 
-~~~~~{.haskell}
-factorE * < factorE * < factorE * ... < factorE >>>
-~~~~~
+Second, we can write a generator for constant values (that can appear in 
+expressions). Our generator simply chooses between randomly generated 
+`Bool` and `Int` values.
 
-where we keep chaining `factorE` values and multiplying 
-them for as long as we can. There is something unpleasant 
-about the above: the addition operators are right-associative
+> instance Arbitrary Value where 
+>   arbitrary = oneof [ IntVal  <$> arbitrary
+>                     , BoolVal <$> arbitrary ]
 
-~~~~~{.haskell}
-ghci> doParse sumE "10-1-1"
-[(10,"")]
-~~~~~
 
-Ugh! I hope you understand why: its because the above was 
-parsed as `10 - (1 - 1)` (right associative) and not
-`(10 - 1) - 1` (left associative). You might be tempted 
-to fix that simply by flipping the order of `prodE` and 
-`sumE`
+Third, we define a generator for `Expression` and `Statement` which 
+selects from the different cases.
 
-~~~~~{.haskell}
-sumE     = addE <|> prodE 
-  where 
-    addE = do x <- sumE 
-              o <- addOp
-              y <- prodE 
-              return $ x `o` y
-~~~~~
+> -- instance Arbitrary Expression where
+> --   arbitrary = sized arbnE
+>
+> -- arbE = frequency [ (1, Var   <$> arbitrary)
+> --                  , (1, Val   <$> arbitrary)
+> --                  , (5, Plus  <$> arbitrary <*> arbitrary)
+> --                  , (5, Minus <$> arbitrary <*> arbitrary) ]
 
-but this would prove disastrous. Can you see why? 
+Finally, we need to write a generator for `WState` so that we can run 
+the *While* program from some arbitrary input configuration. 
 
-The  parser for `sumE` directly (recursively) calls itself 
-**without consuming any input!** Thus, it goes off the deep 
-end and never comes back. Instead, we want to make sure we 
-keep consuming `prodE` values and adding them up (rather 
-like fold) and so we could do
+> instance (Ord a, Arbitrary a, Arbitrary b) => Arbitrary (M.Map a b) where
+>   arbitrary = M.fromList <$> arbitrary
 
-\begin{code}
-sumE1       = prodE1 >>= addE1
-  where 
-    addE1 x = grab x <|> return x
-    grab  x = do o <- addOp
-                 y <- prodE1 
-                 addE1 $ x `o` y
+In the above, `xvs` is a randomly generated list of key-value tuples,
+which is turned into a `Map` by the `fromList` function.
 
-prodE1      = factorE1 >>= mulE1 
-  where 
-    mulE1 x = grab x <|> return x
-    grab  x = do o <- mulOp
-                 y <- factorE1 
-                 mulE1 $ x `o` y
+Program Equivalence
+-------------------
 
-factorE1 = parenP sumE1 <|> oneInt
-\end{code}
+Let `p1` and `p2` be two *While* programs. We say that `p1` 
+is *equivalent to* `p2` if for all input configurations `st` the
+configuration resulting from executing `p1` from `st` is the same 
+as that obtained by executing `p2` from `st`. Formally,
 
-It is easy to check that the above is indeed left associative.
+> (===) ::  Statement -> Statement -> Property
+> p1 === p2 = forAll arbitrary $ \st -> execute st p1 == execute st p2 
 
-~~~~~{.haskell}
-ghci> doParse sumE1 "10-1-1"
-[(8,"")]
-~~~~~
+Checking An Optimization: Zero-Add-Elimination
+----------------------------------------------
 
-and it is also very easy to spot and bottle the chaining computation
-pattern: the only differences are the *base* parser 
-(`prodE1` vs `factorE1`) and the binary operation (`addOp` vs `mulOp`).
-We simply make those parameters to our *chain-left* combinator
+Excellent! Lets take our generators our for a spin, by checking some
+*compiler optimizations*. Intuitively, a compiler optimization (or 
+transformation) can be viewed as a *pair* of programs -- the input 
+program `p_in` and a transformed program `p_out`. A transformation 
+`(p_in, p_out)`is *correct* iff `p_in` is equivalent to `p_out`.
 
-\begin{code}
-p `chainl` pop = p >>= rest
-   where 
-     rest x = grab x <|> return x 
-     grab x = do o <- pop
-                 y <- p
-                 rest $ x `o` y 
-\end{code}
+Here's are some simple *sanity* check properties that correspond to
+optimizations. 
 
-after which we can rewrite the grammar in three lines
+> prop_add_zero_elim :: Variable -> Expression -> Property
+> prop_add_zero_elim x e = 
+>   (x `Assign` (e `Plus` Val (IntVal 0))) === (x `Assign` e) 
+>
+> prop_sub_zero_elim :: Variable -> Expression -> Property
+> prop_sub_zero_elim x e =
+>   (x `Assign` (e `Minus` Val (IntVal 0))) === (x `Assign` e) 
 
-\begin{code}
-sumE2    = prodE2   `chainl` addOp
-prodE2   = factorE2 `chainl` mulOp
-factorE2 = parenP sumE2 <|> oneInt 
-\end{code}
+Lets check the properties!
 
 ~~~~~{.haskell}
-ghci> doParse sumE2 "10-1-1"
-[(8,"")]
-
-ghci> doParse sumE2 "10*2+1"
-[(21,"")]
-
-ghci> doParse sumE2 "10+2*1"
-[(12,"")]
+ghci> quickCheck prop_add_zero_elim 
+(0 tests)
+...
 ~~~~~
 
-That concludes our in-class exploration of monadic parsing. 
-This is merely the tip of the iceberg. Though parsing is a 
-very old problem, and has been studied since the dawn of 
-computing, we saw how monads bring a fresh perspective 
-which have recently been transferred from Haskell to 
-[many other languages][3]. 
-There have been several exciting [recent][4] [papers][5] 
-on the subject, that you can explore on your own. 
-Finally, Haskell comes with several parser combinator 
-libraries including [Parsec][3] which you will play 
-around with in [HW2](/homeworks/Hw2.html). 
+Uh? whats going on? Well, lets look at the generator for expressions.
 
-[2]: http://homepages.inf.ed.ac.uk/wadler/papers/marktoberdorf/baastad.pdf
-[3]: http://www.haskell.org/haskellwiki/Parsec
-[4]: http://www.cse.chalmers.se/~nad/publications/danielsson-parser-combinators.html
-[5]: http://portal.acm.org/citation.cfm?doid=1706299.1706347
-λ> 
+~~~~~{.haskell}
+arbE = frequency [ (1, liftM Var arbitrary)
+                 , (1, liftM Val arbitrary)
+                 , (5, liftM2 Plus  arbitrary arbitrary)
+                 , (5, liftM2 Minus arbitrary arbitrary) ]
+~~~~~
+
+in effect, its will generate infinite expressions with high probability!
+(do the math!) So we need some way to control the size, either by biasing 
+the `Var` and `Val` constructors (which terminate the generation) or by
+looking at the *size* of the structure during generation. We can do this
+with the combinator
+
+~~~~~{.haskell}
+sized :: (Int -> Gen a) -> Gen a
+~~~~~
+
+which lets us write functions that parameterize the generator with an
+integer (and then turn that into a flat generator.)
+
+> arbnE :: Int -> Gen Expression
+> arbnE 0 = oneof     [ liftM Var arbitrary
+>                     , liftM Val arbitrary ]
+> arbnE n = frequency [ (1, liftM Var arbitrary)
+>                     , (1, liftM Val arbitrary)
+>                     , (5, liftM2 Plus  (arbnE n_by_2) (arbnE n_by_2))
+>                     , (5, liftM2 Minus (arbnE n_by_2) (arbnE n_by_2)) ]
+>   where n_by_2 = n `div` 2
+
+In the above, we keep *halving* the number of allowed nodes, and when that
+number goes to `0` we just return an atomic expression (either a variable
+or a constant.) We can now update the generator for expressions to
+
+> -- instance Arbitrary Expression where
+> --   arbitrary = sized arbnE
+
+And now, lets check the property again
+
+~~~~~{.haskell}
+ghci> quickCheck prop_add_zero_elim 
+*** Failed! Falsifiable (after 10 tests):  
+W
+True
+fromList [(R,False)]
+~~~~~
+
+whoops! Forgot about those pesky boolean expressions! If you think about it,
+
+~~~~~{.haskell}
+X := True + 0
+~~~~~
+
+will assign `0` to the variable while
+
+~~~~~{.haskell}
+X := True 
+~~~~~
+
+will assign `True` to the variable! Urgh. Ok, lets limit ourselves to *Integer* 
+expressions
+
+> intE :: Gen Expression
+> intE = sized arbnEI 
+>   where arbnEI 0 = oneof [ liftM Var arbitrary
+>                          , liftM (Val . IntVal) arbitrary ]
+>         arbnEI n = oneof [ liftM Var arbitrary
+>                          , liftM (Val . IntVal) arbitrary
+>                          , liftM2 Plus  (arbnEI n_by_2) (arbnEI n_by_2)
+>                          , liftM2 Minus (arbnEI n_by_2) (arbnEI n_by_2) ]
+>                    where n_by_2 = n `div` 2
+
+using which, we can tweak the property to limit ourselves to integer
+expressions
+
+> prop_add_zero_elim'   :: Variable -> Property
+> prop_add_zero_elim' x = 
+>   forAll intE $ \e -> (x `Assign` (e `Plus` Val (IntVal 0))) === (x `Assign` e)
+
+
+O, Quickcheck, what say you now?
+
+~~~~~{.haskell}
+ghci> quickCheck prop_add_zero_elim'
+*** Failed! Falsifiable (after 16 tests):  
+V
+N
+fromList [(A,-36),(B,True),(D,False),(E,44),(L,-32),(M,22),(N,True),(O,False),(Q,True),(S,True),(W,50)]
+~~~~~
+
+Of course! in the input state where `N` has the value `True`, the result of
+executing `V := N` is quite different from executing `V := N + 0`. Oh well,
+so much for that optimization, I guess we need some type information before
+we can eliminate the additions-to-zero!
+
+
+Checking An Optimization: Constant Folding (sort of) 
+----------------------------------------------------
+
+Well, that first one ran aground because *While* was untyped (tsk tsk.)
+and so adding a zero can cause problems if the expression is a boolean. 
+Lets look at another optimization that is not plagued by the
+int-v-bool conflict. Suppose you have two back-to-back 
+assignments
+
+~~~~~{.haskell}
+X := E
+Y := E
+~~~~~
+
+It is silly to recompute `E` twice, since the result is already stored in
+`X`. So, we should be able to optimize the above code to 
+
+~~~~~{.haskell}
+X := E
+Y := X
+~~~~~
+
+Lets see how we might express the correctness of this transformation 
+as a QC property
+
+> prop_const_prop :: Variable -> Variable -> Expression -> Property
+> prop_const_prop x y e = 
+>   ((x `Assign` e) `Sequence` (y `Assign` e))
+>   ===
+>   ((x `Assign` e) `Sequence` (y `Assign` Var x))
+
+Mighty QC, do you agree ?
+
+~~~~~{.haskell}
+*Main> quickCheck prop_const_prop 
+*** Failed! Falsifiable (after 35 tests):  
+Z
+P
+O + A + J + G + C + False + O + K + 6965 + True + True + W + T + K + 5266 + J + Z + R + -1588 + P + R + 3667 + B + Q + T + Y + Z + X + M + False + -1191 + 6124 + H + B + 1351 + S + T + E + R + 6969
+fromList [(B,True),(D,3714),(E,True),(P,2455),(Q,True),(Y,-7341)]
+~~~~~
+
+Shrinking 
+---------
+
+Holy transfer function!! It fails?!! And what is that bizarre test? It
+seems rather difficult to follow. Turns out, QC comes with a *test
+shrinking* mechanism; all we need do is add to the `Arbitrary` instance
+a function of type
+
+~~~~~{.haskell}
+shrink :: a -> [a]
+~~~~~
+
+which will take a candidate and generate a list of *smaller* candidates
+that QC will systematically crunch through till it finds a minimally
+failing test!
+
+> instance Arbitrary Expression where
+>   arbitrary = sized arbnE
+>
+>   shrink (Plus e1 e2)  = [e1, e2]
+>   shrink (Minus e1 e2) = [e1, e2]
+>   shrink _             = []
+
+Lets try it again to see if we can figure it out!
+
+~~~~~{.haskell}
+ghci> quickCheck prop_const_prop 
+*** Failed! Falsifiable (after 26 tests and 4 shrinks):    
+D
+U
+A + D
+fromList [(D,-638),(G,256),(H,False),(K,False),(O,True),(R,True),(S,-81),(T,926)]
+~~~~~
+
+Aha! Consider the two programs
+
+~~~~~{.haskell}
+D := A + D; 
+U := A + D
+~~~~~
+
+and 
+
+~~~~~{.haskell}
+D := A + D; 
+U := D
+~~~~~
+
+are they equivalent? Pretty subtle, eh. 
+
+
+Well, I hope I've convinced you that QuickCheck is pretty awesome. 
+The astonishing thing about it is its sheer simplicity -- a few 
+fistfuls of typeclasses and a tiny pinch of monads and lo! a 
+shockingly useful testing technique that can find a bunch of 
+subtle bugs or inconsistencies in your code. 
+
+Moral of the story -- types can go a long way towards making 
+your code *obviously correct*, but not the whole distance. 
+Make up the difference by writing properties, and have the 
+machine crank out thousands of tests for you!
+
+There is a lot of literature on QuickCheck on the web. 
+It is used for a variety of commercial applications, 
+both in Haskell and in pretty much every modern language, 
+including [Perl][10]. 
+Even if you don't implement a system in Haskell, you 
+can use QuickCheck to test it, by just using the nifty 
+[data generation][9] facilities. 
+
+
+Appendix: Helper Code
+=====================
+
+
+Evaluator Code 
+--------------
+
+We don't have exceptions, so if a variable is not found, return value 0
+
+> evalE :: Expression -> State WState Value
+> evalE (Var x)       = get >>= return . M.findWithDefault (IntVal 0) x
+> evalE (Val v)       = return v
+> evalE (Plus e1 e2)  = return (intOp (+) 0 IntVal) `ap` evalE e1 `ap` evalE e2
+> evalE (Minus e1 e2) = return (intOp (-) 0 IntVal) `ap` evalE e1 `ap` evalE e2
+>
+> evalS :: Statement -> State WState ()
+> evalS w@(While e s)    = evalS (If e (Sequence s w) Skip)
+> evalS Skip             = return ()
+> evalS (Sequence s1 s2) = evalS s1 >> evalS s2
+> evalS (Assign x e )    = do v <- evalE e
+>                             m <- get
+>                             put $ M.insert x v m
+>                             return ()
+> evalS (If e s1 s2)     = do v <- evalE e
+>                             case v of 
+>                               BoolVal True  -> evalS s1
+>                               BoolVal False -> evalS s2
+>                               _             -> return ()
+
+Return `0` for arithmetic operations over a `Bool` value.
+
+> intOp :: (Int -> Int -> a) -> a -> (a -> Value) -> Value -> Value -> Value
+> intOp op _ c (IntVal x) (IntVal y) = c $ x `op` y
+> intOp _  d c _          _          = c d 
+> 
+
+
+Pretty Printing Code
+--------------------
+
+> blank   :: Int -> String 
+> blank n = replicate n ' '
+> 
+> instance Show Variable where
+>   show (V x) = x
+> 
+> instance Show Value where
+>   show (IntVal  i) = show i
+>   show (BoolVal b) = show b
+> 
+> instance Show Expression where
+>   show (Var v)       = show v
+>   show (Val v)       = show v
+>   show (Plus e1 e2)  = show e1 ++ " + " ++ show e2
+>   show (Minus e1 e2) = show e1 ++ " + " ++ show e2
+> 
+> instance Show Statement where
+>   show = showi 0
+>
+> showi :: Int -> Statement -> String 
+> showi n (Skip)       = blank n ++ "skip"
+> showi n (Assign x e) = blank n ++ show x ++ " := " ++ show e
+> showi n (If e s1 s2) = blank n ++ "if " ++ show e ++ " then\n" ++ 
+>                        showi (n+2) s1 ++
+>                        blank n ++ "else\n" ++
+> 					     showi (n+2) s2 ++
+> 					     blank n ++ "endif"
+> 
+> showi n (While e s)  = blank n ++ "while " ++ show e ++ " do\n" ++ 
+>                        showi (n+2) s
+> showi n (Sequence s1 s2) = showi n s1 ++ "\n" ++ showi n s2 
+
+Generating Statements
+---------------------
+
+> instance Arbitrary Statement where
+>   arbitrary = oneof [ liftM2 Assign   arbitrary arbitrary
+>                     , liftM3 If       arbitrary arbitrary arbitrary
+>                     , liftM2 While    arbitrary arbitrary
+>	              , liftM2 Sequence arbitrary arbitrary
+>                     , return Skip ]
+
+[0]: http://www.cse.chalmers.se/~koen/
+[1]: http://www.cse.chalmers.se/~rjmh/QuickCheck/
+[2]: http://www.cs.york.ac.uk/fp/smallcheck/
+[3]: http://video.google.com/videoplay?docid=4655369445141008672#
+[4]: http://www.erlang-factory.com/upload/presentations/55/TestingErlangProgrammesforMulticore.pdf
+[5]: http://en.wikipedia.org/wiki/Insertion_sort
+[6]: http://hackage.haskell.org/packages/archive/QuickCheck/latest/doc/html/src/Test-QuickCheck-Gen.html#Gen
+[7]: http://book.realworldhaskell.org/read/monads.html
+[8]: http://book.realworldhaskell.org/read/testing-and-quality-assurance.html
+[9]: http://www.haskell.org/haskellwiki/QuickCheck_as_a_test_set_generator
+[10]: http://community.moertel.com/~thor/talks/pgh-pm-talk-lectrotest.pdf
+[11]: http://www.cse.chalmers.se/~rjmh

@@ -10,8 +10,8 @@ title: Lectures
   *1/15*     Typeclasses                                        [html][lec4] [hs][lhs4] 
   *1/20*     Monoids & Functors                                 [html][lec7] [hs][lhs7]
   *1/22*     Monads                                             [html][lec7] [hs][lhs7]
-  *2/10*     Parser Combinators                                  
-  *2/12*     Testing
+  *2/10*     Parser Combinators                                 [html][lec9] [hs][lhs9] 
+  *2/17*     Testing                                            [html][lec10] [hs][lhs10]
   *2/17*     Parallelism
   *2/19*     Concurrency
   *2/24*     Lambda Calculus
@@ -44,10 +44,10 @@ title: Lectures
 [lec9]: lectures/lec-parsers.html
 [lhs9]: lectures/lec-parsers.lhs
 
-<!--
 [lec10]: lectures/lec-quickcheck.html
 [lhs10]: lectures/lec-quickcheck.lhs
 
+<!--
 [lec11]: lectures/lec-transformers.html
 [lhs11]: lectures/lec-transformers.lhs
 

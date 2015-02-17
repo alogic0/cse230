@@ -3,14 +3,14 @@ title: QuickCheck: Type-directed Property Testing
 ---
 
 > {-# LANGUAGE NoMonomorphismRestriction, FlexibleInstances, TypeSynonymInstances #-}
-
-> import Test.QuickCheck
+> module Testing where 
+> import Test.QuickCheck hiding ((===))
 > import Control.Monad
 > import Data.List
 > import qualified Data.Map as M 
 > import Control.Monad.State hiding (when)
-> import Control.Applicative ((<$>), (<*>))
-
+> import Control.Applicative ((<$>))
+ 
 In this lecture, we will look at [QuickCheck][1], a technique that
 cleverly exploits typeclasses and monads to deliver a powerful 
 automatic testing methodology. 
@@ -98,6 +98,7 @@ That is, Haskell generated 100 test inputs and for all of those, the
 property held. You can up the stakes a bit by changing the number of
 tests you want to run
 
+> quickCheckN   :: (Testable p) => Int -> p -> IO () 
 > quickCheckN n = quickCheckWith $ stdArgs { maxSuccess = n }
 
 and then do
@@ -113,6 +114,7 @@ QuickCheck QuickSort
 Lets look at a slightly more interesting example. Here is the canonical 
 implementation of *quicksort* in Haskell.
 
+> qsort        :: (Ord a) => [a] -> [a]
 > qsort []     = []
 > qsort (x:xs) = qsort lhs ++ [x] ++ qsort rhs
 >   where lhs  = [y | y <- xs, y <= x]
@@ -136,6 +138,7 @@ Looks good -- lets try to test that the output is in
 fact sorted. We need a function that checks that a 
 list is ordered
 
+> isOrdered ::         (Ord a) => [a] -> Bool
 > isOrdered (x1:x2:xs) = x1 <= x2 && isOrdered (x2:xs)
 > isOrdered _          = True
 
@@ -167,11 +170,6 @@ of the input
 
 > prop_qsort_min :: [Int] -> Bool
 > prop_qsort_min xs = head (qsort xs) == minimum xs
-
-> prop_qsort_min' :: [Int] -> Bool
-> prop_qsort_min' xs = (null xs) || head (qsort xs) == minimum xs 
-
-
 
 However, when we run this, we run into a glitch
 
@@ -271,6 +269,7 @@ and the actual behavior of the code itself.
 We can rectify matters by stipulating that the `qsort` produces
 lists of distinct elements
 
+> isDistinct ::(Eq a) => [a] -> Bool
 > isDistinct (x:xs) = not (x `elem` xs) && isDistinct xs
 > isDistinct _      = True
 >
@@ -280,7 +279,7 @@ lists of distinct elements
 and then, weakening the equivalence to only hold on inputs that 
 are duplicate-free 
 
-> prop_qsort_distinct_sort :: [Int] -> Gen Prop
+> prop_qsort_distinct_sort :: [Int] -> Property 
 > prop_qsort_distinct_sort xs = 
 >   (isDistinct xs) ==> (qsort xs == sort xs)
 
@@ -338,6 +337,7 @@ ghci> insert 8 ([1..3] ++ [10..13])
 
 Indeed, the following is the well known [insertion-sort][5] algorithm
 
+> isort :: (Ord a) => [a] -> [a]
 > isort = foldr insert []
 
 We could write our own tests, but why do something a machine can do better?!
@@ -522,6 +522,7 @@ class Arbitrary a where
   arbitrary :: Gen a
 ~~~~~
 
+> gimmeInts :: IO [Int]
 > gimmeInts = sample' arbitrary
 
 Thus, to have QC work with (ie generate random tests for) values of type
@@ -717,6 +718,7 @@ chance of not finishing off with the empty list, so lets use
 We can use the above to build a custom generator that always returns
 *ordered lists* by piping the generate list into the `sort` function
 
+> genOrdList :: (Ord a, Arbitrary a) => Gen [a]
 > genOrdList = sort <$> genList3 
 
 ~~~~~{.haskell}
@@ -884,9 +886,11 @@ program `p_in` and a transformed program `p_out`. A transformation
 Here's are some simple *sanity* check properties that correspond to
 optimizations. 
 
+> prop_add_zero_elim :: Variable -> Expression -> Property
 > prop_add_zero_elim x e = 
 >   (x `Assign` (e `Plus` Val (IntVal 0))) === (x `Assign` e) 
 >
+> prop_sub_zero_elim :: Variable -> Expression -> Property
 > prop_sub_zero_elim x e =
 >   (x `Assign` (e `Minus` Val (IntVal 0))) === (x `Assign` e) 
 
@@ -920,6 +924,7 @@ sized :: (Int -> Gen a) -> Gen a
 which lets us write functions that parameterize the generator with an
 integer (and then turn that into a flat generator.)
 
+> arbnE :: Int -> Gen Expression
 > arbnE 0 = oneof     [ liftM Var arbitrary
 >                     , liftM Val arbitrary ]
 > arbnE n = frequency [ (1, liftM Var arbitrary)
@@ -960,6 +965,7 @@ X := True
 will assign `True` to the variable! Urgh. Ok, lets limit ourselves to *Integer* 
 expressions
 
+> intE :: Gen Expression
 > intE = sized arbnEI 
 >   where arbnEI 0 = oneof [ liftM Var arbitrary
 >                          , liftM (Val . IntVal) arbitrary ]
@@ -972,6 +978,7 @@ expressions
 using which, we can tweak the property to limit ourselves to integer
 expressions
 
+> prop_add_zero_elim'   :: Variable -> Property
 > prop_add_zero_elim' x = 
 >   forAll intE $ \e -> (x `Assign` (e `Plus` Val (IntVal 0))) === (x `Assign` e)
 
@@ -1017,6 +1024,7 @@ Y := X
 Lets see how we might express the correctness of this transformation 
 as a QC property
 
+> prop_const_prop :: Variable -> Variable -> Expression -> Property
 > prop_const_prop x y e = 
 >   ((x `Assign` e) `Sequence` (y `Assign` e))
 >   ===
@@ -1144,6 +1152,7 @@ Return `0` for arithmetic operations over a `Bool` value.
 Pretty Printing Code
 --------------------
 
+> blank   :: Int -> String 
 > blank n = replicate n ' '
 > 
 > instance Show Variable where
@@ -1161,7 +1170,8 @@ Pretty Printing Code
 > 
 > instance Show Statement where
 >   show = showi 0
-> 
+>
+> showi :: Int -> Statement -> String 
 > showi n (Skip)       = blank n ++ "skip"
 > showi n (Assign x e) = blank n ++ show x ++ " := " ++ show e
 > showi n (If e s1 s2) = blank n ++ "if " ++ show e ++ " then\n" ++ 
