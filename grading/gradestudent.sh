@@ -14,12 +14,6 @@ mkdir -p $GRADEDIR
 
 cp $ASSNDIR/* $GRADEDIR
 
-# copy suplementary files...
-#
-# cp hw3/twoPowerEight.imp $GRADEDIR
-# cp hw3/gcd.imp $GRADEDIR
-#
-
 GRADEFILE="$GRADEDIR/gradereport"
 
 ASSNFILE=$ASSNDIR/$ASSN.lhs
@@ -27,10 +21,15 @@ if [ ! -e $ASSNFILE ]; then
    ASSNFILE=$ASSNDIR/$ASSN.hs
 fi
 
+SOLNFILE=$ASSN/Solution.lhs
+if [ ! -e $SOLNFILE ]; then
+   SOLNFILE=$ASSN/Solution.hs
+fi
+
 GRADEFILE="$GRADEDIR/gradereport"
 
 (echo "Grading $ASSN for $STUDENT" &&
-ghc -iSOE/src:$ASSN -odir $GRADEDIR -o $GRADEDIR/grade$ASSN --make $ASSN/grade$ASSN.hs grade.hs $ASSNFILE $ASSN/Solution.hs 2>&1 &&
+ghc -iSOE/src:$ASSN -odir $GRADEDIR -o $GRADEDIR/grade$ASSN --make $ASSN/grade$ASSN.hs grade.hs $ASSNFILE $SOLNFILE 2>&1 &&
 $GRADEDIR/grade$ASSN
 ) | tee $GRADEFILE
 
