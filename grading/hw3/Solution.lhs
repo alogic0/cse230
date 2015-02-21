@@ -26,7 +26,8 @@ Please note that this address is unmonitored; if you have any
 questions about the assignment, post to Piazza.
 
 > {-# LANGUAGE TypeSynonymInstances, FlexibleContexts, NoMonomorphismRestriction, OverlappingInstances, FlexibleInstances #-}
-
+> module Solution where
+> import qualified Hw3 as H
 > import qualified Data.Map as Map
 
 > import Control.Monad.State
@@ -35,8 +36,9 @@ questions about the assignment, post to Piazza.
 
 > import Test.QuickCheck hiding ((===))
 > import Control.Monad (forM, forM_)
-> import Data.List (transpose, intercalate)
+> import Data.List (transpose, intercalate, nubBy, sortBy)
 
+> import Control.Applicative
 
 > quickCheckN n = quickCheckWith $ stdArgs { maxSuccess = n}
 
@@ -56,20 +58,20 @@ Problem 1: Binary Search Trees Revisited
 Recall the old type of binary search trees from
 [HW2](/homeworks/Hw2.html).
 
-> data BST k v = Emp 
->              | Bind k v (BST k v) (BST k v) 
->              deriving (Show)
-> 
-> toBinds ::  BST t t1 -> [(t, t1)]
-> toBinds Emp            = []
-> toBinds (Bind k v l r) = toBinds l ++ [(k,v)] ++ toBinds r
+-- > data BST k v = Emp 
+-- >              | Bind k v (BST k v) (BST k v) 
+-- >              deriving (Show)
+
+> toBinds :: H.BST t t1 -> [(t, t1)]
+> toBinds H.Emp            = []
+> toBinds (H.Bind k v l r) = toBinds l ++ [(k,v)] ++ toBinds r
 
 The following function tests whether a tree satisfies the 
 binary-search-order invariant.
 
-> isBSO ::  Ord a => BST a b -> Bool
-> isBSO Emp            = True
-> isBSO (Bind k v l r) = all (< k) lks && all (k <) rks && isBSO l && isBSO r
+> isBSO ::  Ord a => H.BST a b -> Bool
+> isBSO H.Emp            = True
+> isBSO (H.Bind k v l r) = all (< k) lks && all (k <) rks && isBSO l && isBSO r
 >   where lks = map fst $ toBinds l
 >         rks = map fst $ toBinds r
 
@@ -81,8 +83,8 @@ type of operations over trees
 
 and a function that constructs a tree from a sequence of operations
 
-> ofBSTops ::  Ord k => [BSTop k v] -> BST k v
-> ofBSTops    = foldr doOp Emp
+> ofBSTops ::  Ord k => [BSTop k v] -> H.BST k v
+> ofBSTops    = foldr doOp H.Emp
 >   where doOp (BSTadd k v) = bstInsert k v 
 >         doOp (BSTdel k)   = bstDelete k 
 
@@ -108,8 +110,15 @@ and functions that generate an arbitrary BST operations
 
 Write an insertion function 
 
-> bstInsert :: (Ord k) => k -> v -> BST k v -> BST k v
-> bstInsert = error "TBD"
+> bstInsert :: (Ord k) => k -> v -> H.BST k v -> H.BST k v
+> bstInsert k v t = balance $ bstInsertRaw k v t
+
+> bstInsertRaw :: (Ord k) => k -> v -> H.BST k v -> H.BST k v
+> bstInsertRaw k v H.Emp = H.Bind k v H.Emp H.Emp
+> bstInsertRaw k v (H.Bind k' v' l r)
+>     | k < k'    = H.Bind k' v' (bstInsert k v l) r
+>     | k > k'    = H.Bind k' v' l (bstInsert k v r)
+>     | otherwise = H.Bind k v l r
 
 such that `bstInsert k v t` inserts a key `k` with value 
 `v` into the tree `t`. If `k` already exists in the input
@@ -128,8 +137,25 @@ are done, your code should satisfy the following QC properties.
 
 Write a deletion function for BSTs of this type:
 
-> bstDelete :: (Ord k) => k -> BST k v -> BST k v
-> bstDelete k t = error "TBD"
+> bstDelete k t = balance $ bstDeleteRaw k t
+
+> maxRight :: (Ord k) => H.BST k v -> Maybe (H.BST k v, k, v)
+> maxRight H.Emp                = Nothing
+> maxRight (H.Bind k v l H.Emp) = Just (l, k, v)
+> maxRight (H.Bind k v l r  )   = case maxRight r of
+>                                   Just (t, k', v') -> Just (H.Bind k v l t, k', v')
+
+-- pmr: This final case seems like it would be ripe for dsolving.
+--      In general, it would be cool to verify this deletion.
+--      (Surely there were other BST deletions - how do they work?)
+
+> bstDeleteRaw :: (Ord k) => k -> H.BST k v -> H.BST k v
+> bstDeleteRaw k H.Emp                         = H.Emp
+> bstDeleteRaw k (H.Bind k' v l r) | k < k'    = H.Bind k' v (bstDeleteRaw k l) r
+>                                  | k > k'    = H.Bind k' v l (bstDeleteRaw k r)
+>                                  | otherwise = case maxRight l of
+>                                                  Nothing         -> r
+>                                                  Just (l', k, v) -> H.Bind k v l' r
 
 such that `bstDelete k t` removes the key `k` from the tree `t`. 
 If `k` is absent from the input tree, then the tree is returned 
@@ -149,18 +175,27 @@ satisfy the following QC properties.
 
 The following function determines the `height` of a BST 
 
-> height (Bind _ _ l r) = 1 + max (height l) (height r)
-> height Emp            = 0
+> height (H.Bind _ _ l r) = 1 + max (height l) (height r)
+> height H.Emp            = 0
 
 We say that a tree is *balanced* if 
 
-> isBal (Bind _ _ l r) = isBal l && isBal r && abs (height l - height r) <= 2
-> isBal Emp            = True
+> isBal (H.Bind _ _ l r) = isBal l && isBal r && abs (height l - height r) <= 2
+> isBal H.Emp            = True
 
 Write a balanced tree generator 
 
-> genBal :: Gen (BST Int Char)
-> genBal = error "TBD"
+> genBal :: Gen (H.BST Int Char)
+> genBal = mkBalanced . nubBy eqKeys . sortBy cmpKeys <$> listOf genBSTadd
+>   where
+>     cmpKeys (BSTadd k1 _) (BSTadd k2 _) = compare k1 k2
+>     eqKeys  (BSTadd k1 _) (BSTadd k2 _) = k1 == k2
+>     mkBalanced [] = H.Emp
+>     mkBalanced [BSTadd k v] = H.Bind k v H.Emp H.Emp
+>     mkBalanced xs = let (ys, (BSTadd k v):zs) = splitAt (length xs `div` 2) xs
+>                         l = mkBalanced ys
+>                         r = mkBalanced zs
+>                     in H.Bind k v l r
 
 such that
 
@@ -178,6 +213,41 @@ create balanced trees. That is, they satisfy the properties
 > prop_delete_bal ::  Property
 > prop_delete_bal = forAll (listOf genBSTop) $ isBal . ofBSTops
 
+> rotateL :: (Ord k) => H.BST k v -> H.BST k v
+> rotateL H.Emp = H.Emp
+> rotateL t@(H.Bind k v l r)
+>     = case r of
+>         H.Emp -> t
+>         H.Bind k' v' l' r' -> H.Bind k' v' (H.Bind k v l l') r'
+
+> rotateR :: (Ord k) => H.BST k v -> H.BST k v
+> rotateR H.Emp = H.Emp
+> rotateR t@(H.Bind k v l r)
+>     = case l of
+>         H.Emp -> t
+>         H.Bind k' v' l' r' -> H.Bind k' v' l' (H.Bind k v r' r)
+
+> balanceFactor H.Emp = 0
+> balanceFactor (H.Bind _ _ l r) = height l - height r
+
+> balance :: (Ord k) => H.BST k v -> H.BST k v
+> balance H.Emp = H.Emp
+> balance t@(H.Bind k v l r) = go $ balanceFactor t
+>   where
+>     go n
+>       -- left-right
+>       | n > 1 && (balanceFactor l) < 0
+>          = rotateR $ H.Bind k v (rotateL l) r
+>       -- left-left
+>       | n > 1
+>          = rotateR t
+>       -- right-left
+>       | n < -1 && (balanceFactor r) > 0
+>          = rotateL $ H.Bind k v l (rotateR r)
+>       -- right-right
+>       | n < -1
+>          = rotateL t
+>       | otherwise = t
 
 
 
@@ -435,14 +505,27 @@ outputs an N-bit binary number. Subtracting one from zero should
 yield zero.
 
 > prop_bitSubtractor_Correct ::  Signal -> [Bool] -> Bool
-> prop_bitSubtractor_Correct = error "TODO"
+> prop_bitSubtractor_Correct bin xs = 
+>   binary (sampleN sum) == max 0 (binary xs - binary (sample1 bin))
+>   where (sum,bout) = bitSubtractor (bin, map lift0 xs)
 
 2. Using the `bitAdder` circuit as a model, deﬁne a `bitSubtractor` 
 circuit that implements this functionality and use QC to check that 
 your behaves correctly.
 
+> snot :: Signal -> Signal
+> snot a = xor2 (high, a)
+
+> halfsub :: (Signal, Signal) -> (Signal, Signal)
+> halfsub (x,y) = (sum,bout)
+>   where sum   = xor2 (x, y)
+>         bout  = and2 (y, snot x)
+
 > bitSubtractor :: (Signal, [Signal]) -> ([Signal], Signal)
-> bitSubtractor = error "TODO"
+> bitSubtractor (bin, [])   = ([], bin)
+> bitSubtractor (bin, x:xs) = ((and2 (sum, snot bout)):sums, bout)
+>   where (sum, b)     = halfsub (x,bin)
+>         (sums, bout) = bitSubtractor (b,xs)
 
 
 Problem: Multiplication
@@ -453,7 +536,8 @@ for a `multiplier` circuit that takes two binary numbers of arbitrary
 width as input and outputs their product.
 
 > prop_Multiplier_Correct ::  [Bool] -> [Bool] -> Bool
-> prop_Multiplier_Correct = error "TODO"
+> prop_Multiplier_Correct x y =
+>   (binary x * binary y) == (binary $ sampleN $ multiplier (map lift0 x, map lift0 y))
 
 4. Deﬁne a `multiplier` circuit and check that it satisﬁes your 
 speciﬁcation. (Looking at how adder is deﬁned will help with this, 
@@ -462,7 +546,8 @@ recursive structure should work, think about how to multiply two
 binary numbers on paper.)
 
 > multiplier :: ([Signal], [Signal]) -> [Signal]
-> multiplier = error "TODO"
+> multiplier (xs, [])   = map (const low) xs
+> multiplier (xs, y:ys) = adder (map (curry and2 y) xs, low : multiplier (xs, ys))
 
 [1]: http://www.cis.upenn.edu/~bcpierce/courses/552-2008/resources/circuits.hs
 
