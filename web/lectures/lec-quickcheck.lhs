@@ -117,7 +117,7 @@ implementation of *quicksort* in Haskell.
 > qsort        :: (Ord a) => [a] -> [a]
 > qsort []     = []
 > qsort (x:xs) = qsort lhs ++ [x] ++ qsort rhs
->   where lhs  = [y | y <- xs, y <= x]
+>   where lhs  = [y | y <- xs, y < x]
 >         rhs  = [z | z <- xs, z > x]
 
 Really doesn't need much explanation! Lets run it "by hand" on a few inputs
@@ -581,6 +581,8 @@ ghci> sample $ choose (0, 3)
 0
 ~~~~~
 
+<!--
+
 QUIZ
 ----
 
@@ -593,6 +595,7 @@ c. `Gen a -> IO [a]`
 d. `Gen a -> IO a`
 e. `a -> Gen [a]`
 
+-->
 
 A second useful combinator is `elements` 
 

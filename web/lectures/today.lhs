@@ -6,7 +6,7 @@ title: QuickCheck: Type-directed Property Testing
 > module Testing where 
 > import Test.QuickCheck hiding ((===))
 > import Control.Monad
-> import Data.List
+> import Data.List hiding (insert)
 > import qualified Data.Map as M 
 > import Control.Monad.State hiding (when)
 > import Control.Applicative ((<$>))
@@ -117,7 +117,7 @@ implementation of *quicksort* in Haskell.
 > qsort        :: (Ord a) => [a] -> [a]
 > qsort []     = []
 > qsort (x:xs) = qsort lhs ++ [x] ++ qsort rhs
->   where lhs  = [y | y <- xs, y <= x]
+>   where lhs  = [y | y <- xs, y < x]
 >         rhs  = [z | z <- xs, z > x]
 
 Really doesn't need much explanation! Lets run it "by hand" on a few inputs
@@ -189,6 +189,13 @@ piece of code is supposed to work.
 In this case we want a *conditional properties* where we only want 
 the output to satisfy to satisfy the spec *if* the input meets the
 precondition that it is non-empty.
+
+
+prop_f_ultimate :: [Int] -> Property
+prop_f_ultimate xs = (f xs) == (correct_but_slow_f xs)
+
+
+
 
 > prop_qsort_nn_min    :: [Int] -> Property
 > prop_qsort_nn_min xs = 
@@ -320,11 +327,9 @@ the probability of a randomly generated list meeting the precondition
 The following code is (a simplified version of) the `insert` function 
 from the standard library 
 
-~~~~~{.haskell}
-insert x []                 = [x]
-insert x (y:ys) | x > y     = x : y : ys
-                | otherwise = y : insert x ys
-~~~~~
+> insert x []                 = [x]
+> insert x (y:ys) | x < y     = x : y : ys
+>                 | otherwise = y : insert x ys
 
 Given an element `x` and a list `xs`, the function walks along `xs` 
 till it finds the first element greater than `x` and it places `x` 
@@ -337,8 +342,8 @@ ghci> insert 8 ([1..3] ++ [10..13])
 
 Indeed, the following is the well known [insertion-sort][5] algorithm
 
-> isort :: (Ord a) => [a] -> [a]
-> isort = foldr insert []
+> isort   :: (Ord a) => [a] -> [a]
+> isort xs = foldr insert [] xs
 
 We could write our own tests, but why do something a machine can do better?!
 
@@ -373,7 +378,7 @@ the output *is* ordered if the input was ordered to begin with
 
 > prop_insert_ordered      :: Int -> [Int] -> Property 
 > prop_insert_ordered x xs = 
->   isOrdered xs ==> isOrdered (insert x xs)
+>   (isOrdered xs) ==> isOrdered (insert x xs)
 
 Notice that now, the precondition is more *complex* -- the property 
 requires that the input list be ordered. If we QC the property
@@ -544,9 +549,13 @@ or more simply
 instance (Arbitrary a, Arbitrary b) => Arbitrary (a,b) where
   arbitrary = liftM2 (,) arbitrary arbitrary
 
-do x <- mx
-   y <- my
-   return $ f x y
+-- or equivalently:
+instance (Arbitrary a, Arbitrary b) => Arbitrary (a,b) where
+  arbitrary = (,) <$> arbitrary <*> arbitrary
+
+liftM2 f mx my = do x <- mx
+                    y <- my
+                    return $ f x y
 ~~~~~
 
 
@@ -581,6 +590,7 @@ ghci> sample $ choose (0, 3)
 0
 ~~~~~
 
+<!--
 QUIZ
 ----
 
@@ -592,6 +602,7 @@ b. `Gen a -> Gen [a]`
 c. `Gen a -> IO [a]`
 d. `Gen a -> IO a`
 e. `a -> Gen [a]`
+-->
 
 
 A second useful combinator is `elements` 
@@ -599,22 +610,6 @@ A second useful combinator is `elements`
 ~~~~~{.haskell}
 elements :: [a] -> Gen a
 ~~~~~
-
-fmap :: (a -> b) -> (m a) -> (m b)
-fmap f m = do x <- m 
-              return (f x)
-
-elements xs = do i <- choose (0, (length xs) - 1)
-                 return (xs !! i)
-
-elements xs = (xs !!) <$> choose (0, length xs - 1)
-
-
-oneOf     :: [Gen a] -> Gen a
-oneOf gs = do g <- elements gs
-              x <- g
-              return x
-
 
 which returns a generator that produces values drawn from the input list
 
@@ -631,6 +626,14 @@ ghci> sample $ elements [10, 20..100]
 100
 80
 10
+~~~~~
+
+**EXERCISE** Lets try to figure out the **implementation** of `elements` (using `choose`)?
+
+~~~~~{.haskell}
+elements :: [a] -> Gen a 
+elements xs = do i <- choose (0, length xs)
+                 return (xs !! i)
 ~~~~~
 
 A third combinator is `oneof` 
@@ -656,10 +659,7 @@ ghci> sample $ oneof [elements [10,20,30], choose (0,3)]
 30
 ~~~~~
 
-EXERCISE
---------
-
-Lets try to figure out the **implementation** of `oneOf`
+**EXERCISE** Lets try to figure out the **implementation** of `oneOf`
 
 ~~~~~{.haskell}
 oneOf :: [Gen a] -> Gen a
@@ -718,8 +718,11 @@ chance of not finishing off with the empty list, so lets use
 We can use the above to build a custom generator that always returns
 *ordered lists* by piping the generate list into the `sort` function
 
-> genOrdList :: (Ord a, Arbitrary a) => Gen [a]
+> -- genOrdList :: (Ord a, Arbitrary a) => Gen [a]
+> genOrdList :: Gen [Int]
 > genOrdList = sort <$> genList3 
+
+p w, p' w', r y |- q' w' x v <: q w x v
 
 ~~~~~{.haskell}
 -- again, remember that, <$> is just `fmap` where:
@@ -846,13 +849,14 @@ expressions). Our generator simply chooses between randomly generated
 Third, we define a generator for `Expression` and `Statement` which 
 selects from the different cases.
 
-> -- instance Arbitrary Expression where
-> --   arbitrary = sized arbnE
+> instance Arbitrary Expression where
+>   arbitrary = sized arbnE
 >
-> -- arbE = frequency [ (1, Var   <$> arbitrary)
-> --                  , (1, Val   <$> arbitrary)
-> --                  , (5, Plus  <$> arbitrary <*> arbitrary)
-> --                  , (5, Minus <$> arbitrary <*> arbitrary) ]
+> arbE :: Gen Expression
+> arbE = frequency [ (1, liftM  Var   arbitrary)
+>                  , (1, liftM  Val   arbitrary)
+>                  , (5, liftM2 Plus  arbitrary arbitrary)
+>                  , (5, liftM2 Minus arbitrary arbitrary) ]
 
 Finally, we need to write a generator for `WState` so that we can run 
 the *While* program from some arbitrary input configuration. 
@@ -1057,12 +1061,12 @@ which will take a candidate and generate a list of *smaller* candidates
 that QC will systematically crunch through till it finds a minimally
 failing test!
 
-> instance Arbitrary Expression where
->   arbitrary = sized arbnE
+> -- instance Arbitrary Expression where
+> --   arbitrary = sized arbnE
 >
->   shrink (Plus e1 e2)  = [e1, e2]
->   shrink (Minus e1 e2) = [e1, e2]
->   shrink _             = []
+> --   shrink (Plus e1 e2)  = [e1, e2]
+> --   shrink (Minus e1 e2) = [e1, e2]
+> --   shrink _             = []
 
 Lets try it again to see if we can figure it out!
 

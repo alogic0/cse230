@@ -1,6 +1,11 @@
-
+Concurrency
+=========== 
 
 \begin{code}
+{-@ LIQUID "--short-names" @-}
+{-@ LIQUID "--diff" @-}
+module Main where
+
 import Control.Applicative ((<$>))
 import Control.Concurrent hiding (readMVar)
 import Control.Concurrent.STM
@@ -19,20 +24,25 @@ import Text.Printf
 \end{code}
 
 
-
-
 \begin{code}
-moas = do { p <- newIORef 10; 
-            incr p; 
-            s <- readIORef p; 
-            putStrLn $ show s}
+-- newRef   :: a -> IO (IORef a)
+-- readRef  :: IORef a -> IO a
+-- writeRef :: IORef a -> a -> IO ()
 
+
+moas :: IO ()
+moas = do p <- newIORef (10 :: Int) 
+          incr p 
+          s <- readIORef p 
+          putStrLn $ show s
+
+incr :: IORef Int -> IO ()
 incr p = do v <- readIORef p      -- v  = *p
             writeIORef p (v + 1)  -- *p = v + 1
 \end{code}
 
 1. Mutable State Via IORef
-==========================
+--------------------------
 
 \begin{code}
 newtype AccountIO = AIO (IORef Int)
@@ -40,7 +50,7 @@ newtype AccountIO = AIO (IORef Int)
 newAccountIO ::  Int -> IO AccountIO
 newAccountIO n 
   | n >= 0 
-  = AIO <$> newIORef n
+  = do {p <- newIORef n ; return (AIO p)} -- AIO <$> newIORef n
   | otherwise
   = do putStrLn "Do I look like a communist?!!"
        AIO <$> newIORef 0
@@ -59,42 +69,47 @@ depositIO (AIO r) n
 
 main1 :: IO ()
 main1 = do a <- newAccountIO 0
-           forM_ (replicate 5 10) $ 
-             depositIO a
+           forM (replicate 5 10) $
+             depositIO a 
            showBalanceIO a   -- should be $50
 \end{code}
 
 2. Forking A Thread 
-===================
-
-forever act = do {act ; forever act}
+---------------------
+\begin{spec}
+forever act = do act
+                 forever act
+\end{spec}
 
 \begin{code}
 main2 = do hSetBuffering stdout NoBuffering
            forkIO $ forever (putChar 'A') -- thread that writes 'A'
            forkIO $ forever (putChar 'B') -- thread that writes 'B'
-           threadDelay (10^5)             -- shutdown after 1 sec
+           threadDelay oneSec             -- shutdown after 1 sec
 
+oneSec :: Int
+oneSec = 10 ^ (5 :: Int)
 \end{code}
 
 3. Randomly Fuzzing the Thread Scheduler
-========================================
+-------------------------------------
 
 \begin{code}
 toss       :: Int -> Int -> IO Int
 toss lo hi = getStdRandom (randomR (lo, hi))
 
-pauseRandom = do n <- toss 0 10
-                 threadDelay $ n * (10 ^ 5)
+pauseRandom :: IO ()
+pauseRandom = do n <- toss 0 5 
+                 threadDelay $ n * oneSec
 
 main3 = do hSetBuffering stdout NoBuffering
            forkIO $ forever (putChar 'A' >> pauseRandom) -- thread that writes 'A'
            forkIO $ forever (putChar 'B' >> pauseRandom) -- thread that writes 'B'
-           threadDelay (10^6)                             -- shutdown after 1 sec
+           threadDelay $ 10 * oneSec                     -- shutdown after 1 sec
 \end{code}
 
 3. Data Races due to sharing
-============================
+----------------------------
 
 Bank account revisited; depositing with different threads, and fuzzed scheduler
 
@@ -103,7 +118,7 @@ depositIO' ::  AccountIO -> Int -> IO ()
 depositIO' (AIO r) n
   = do i   <- myThreadId 
        bal <- readIORef r
-       putStrLn $ printf "Thread id = %s read n = %d bal = %d" (show i) n bal 
+       putStrLn $ printf "Thread id = %s deposit's = %d bal = %d" (show i) n bal 
        pauseRandom           -- comment out and you get right answer
        if ((bal + n) < 0) 
          then putStrLn $ "Sorry, cannot withdraw. Balance below " ++ show n 
@@ -113,12 +128,12 @@ depositIO' (AIO r) n
 main4 ::  IO ()
 main4 = do a <- newAccountIO 0
            mapM_ (forkIO . depositIO' a) (replicate 5 10) 
-           threadDelay (5 * 10^6)   -- shutdown after 1 sec
-           showBalanceIO a          -- should be $50 but isn't due to DATA RACES!
+           threadDelay (50 * oneSec) -- shutdown after 1 sec
+           showBalanceIO a           -- should be $50 but isn't due to DATA RACES!
 \end{code}
 
 4. MVars: Vanilla
-=================
+---------------------
 
 Shared Message-Box-Variables `MVar`
 
@@ -196,6 +211,7 @@ depositMV :: AccountMV -> Int -> IO ()
 depositMV (AMV r) n
   = do bal <- takeMVar r            -- ALL other threads will now be blocked!
        pauseRandom                  -- No matter, you get right answer
+       putStrLn $ "Cannot withdraw, balance below " ++ show bal 
        if (bal + n < 0) 
          then do putMVar r bal      -- Put the balance back in
                  putStrLn $ "Cannot withdraw, balance below " ++ show n 
@@ -204,6 +220,7 @@ depositMV (AMV r) n
 main5 :: IO ()
 main5 = do a <- newAccountMV 0
            mapM_ (forkIO . depositMV a) (replicate 5 10) 
+           threadDelay (10 * oneSec) -- shutdown after 1 sec
            showBalanceMV a          -- should be $50, but why so slow?
 \end{code}
 
@@ -256,6 +273,7 @@ Run with:
 A list of URLs
 
 \begin{code}
+urls :: [String]
 urls = [ "http://www.google.com"
        , "http://www.buzzfeed.com"
        , "http://www.reddit.com/r/haskell"
@@ -266,58 +284,45 @@ urls = [ "http://www.google.com"
 Reading a SINGLE URL
 
 \begin{code}
+timeDownload     :: String -> IO ()
 timeDownload url = do (page, time) <- timeit $ getURL url
                       printf "downloaded: %s (%d bytes, %.2fs)\n" url (B.length page) time
 \end{code}
 
-Reading ALL the URLs **in sequence** (i.e. a single thread)
+Reading ALL the URLs **in sequence** (i.e. a single thread) with `mapM`
 
 \begin{code}
 main6 = do (_ , time) <- timeit $ amapM timeDownload urls 
            printf "TOTAL download time: %.2fs\n" time
 \end{code}
 
-Reading ALL the URLs **asynchronously** with `async` 
+Recall that:
 
-mapM          :: (a -> IO b) -> [a] -> IO [b]
-timeDownload  :: URL -> IO b
-urls          :: [URL]
-mapM timeDownload urls :: IO [b]
-tasks         :: [b]
-
-async         :: IO a -> IO (Async a)
-
-async . timeDownload              :: URL -> IO (Async b)
-mapM (async . timeDownload) urls  :: IO [Async b]
-
-tasks :: [Async b]
-
-mapM timeDownload urls :: IO [b]
-tasks :: [MVar ...]
-tasks :: [(IO ???, Double)]
-
+\begin{spec}
 mapM          :: (a -> IO b) -> [a] -> IO [b]
 mapM f []     = return []
 mapM f (x:xs) = do y  <- f x
                    ys <- mapM f xs
                    return (y : ys)
+\end{spec}
 
-
--- asyncMapM      :: (a -> IO b) -> [a] -> IO [b]
-\begin{code}
-amapM f xs = mapM (async . f) xs >>= mapM wait
-\end{code}
-
+Reading ALL the URLs **asynchronously** with `async` 
 
 \begin{code}
-foo  = do tasks <- mapM (async . timeDownload) urls 
-          mapM wait tasks 
-
-
-
-
-main7 = do (_, time) <- timeit $ foo 
+main7 = do (_, time) <- timeit $ asyncDownload 
            printf "TOTAL download time: %.2fs\n" time
+
+asyncDownload :: IO [()]
+asyncDownload
+      = do tasks <- mapM (async . timeDownload) urls 
+           mapM wait tasks 
+
+amapM :: (a -> IO b) -> [a] -> IO [b]
+amapM f xs 
+  = do tasks <- mapM (async . f) xs 
+       mapM wait tasks 
+
+
 \end{code}
 
 Spawn-then-wait in parallel is a general pattern; lets **generalize** into `asyncMapM`
@@ -327,13 +332,12 @@ asyncMapM :: (a -> IO b) -> [a] -> IO [b]
 asyncMapM f xs = mapM (async . f) xs >>= mapM wait
 \end{code}
 
-**Note:** *Exact* type as `mapM` -- so you can literally just replace to get parallelism.
+**Note:** *Exact* type as `mapM` -- so you can literally just drop-in replace to get parallelism.
 
 Reading ALL URLs with `asyncMapM`
 
-
 \begin{code}
-main8 = do (_, time) <- timeit $ mapM timeDownload urls
+main8 = do (_, time) <- timeit $ asyncMapM timeDownload urls
            printf "TOTAL download time: %.2fs\n" time
 \end{code}
 
@@ -361,6 +365,7 @@ Acquiring Locks
 + Subsequent calls to `acquire` will block...
 
 \begin{code}
+acquire   :: MVar a -> IO a
 acquire l = takeMVar l
 \end{code}
 
@@ -372,21 +377,22 @@ Releasing Locks
 + Subsequent calls to `acquire` will now get unblocked...
 
 \begin{code}
-release l = putMVar l  () 
+release   :: MVar () -> IO ()
+release l = putMVar l () 
 \end{code}
-
-synchronized (lock) { statement }
-
-synchronize :: Lock -> IO a -> IO a 
-synchronize lock act = do acquire lock
-                           x <- act
-                           release lock
-                           return x
 
 Synchronized "Blocks"
 ---------------------
 
-Just a simple function!
+Now, a Java style `synchronize` block 
+
+```Java
+synchronized (lock) {
+  statement
+}
+```
+
+is just a simple Haskell function:
 
 \begin{code}
 synchronize       :: Lock -> IO a -> IO a
@@ -589,6 +595,7 @@ transferT a1 a2 n = do depositT a1 $ 0 - n                  -- withdrawn n from 
 No need for **any** synchronization, just say `atomic` 
 
 \begin{code}
+atomicTransferT :: AccountT -> AccountT -> Int -> IO ()
 atomicTransferT a1 a2 n = atomically $ transferT a1 a2 n
 \end{code}
 
@@ -600,6 +607,7 @@ atomicTransferT a1 a2 n = atomically $ transferT a1 a2 n
 
 -- main = putStrLn "Hello world"
 
+main, main2, main3, main6, main7, main8 :: IO ()
 main         = getArgs >>= (run . head)
   where 
     run "1"  = main1

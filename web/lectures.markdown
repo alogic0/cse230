@@ -4,16 +4,15 @@ title: Lectures
 
 **Date**     **Topic**                                          **Notes**
 --------     ----------------------------------------------     --------------
-   *1/6*     Introduction                                       [pdf][lec1]  [hs][hs1] [lhs][lhs1]
-   *1/8*     Higher-Order Functions                             [html][lec2] [hs][lhs2]
-  *1/13*     Polymorphism                                       [html][lec3] [hs][lhs3]
-  *1/15*     Typeclasses                                        [html][lec4] [hs][lhs4] 
-  *1/20*     Monoids & Functors                                 [html][lec7] [hs][lhs7]
-  *1/22*     Monads                                             [html][lec7] [hs][lhs7]
-  *2/10*     Parser Combinators                                 [html][lec9] [hs][lhs9] 
+   *1/6*     Introduction                                       [pdf][lec1]   [hs][hs1] [lhs][lhs1]
+   *1/8*     Higher-Order Functions                             [html][lec2]  [hs][lhs2]
+  *1/13*     Polymorphism                                       [html][lec3]  [hs][lhs3]
+  *1/15*     Typeclasses                                        [html][lec4]  [hs][lhs4] 
+  *1/20*     Monoids & Functors                                 [html][lec7]  [hs][lhs7]
+  *1/22*     Monads                                             [html][lec7]  [hs][lhs7]
+  *2/10*     Parser Combinators                                 [html][lec9]  [hs][lhs9] 
   *2/17*     Testing                                            [html][lec10] [hs][lhs10]
-  *2/17*     Parallelism
-  *2/19*     Concurrency
+  *2/19*     Concurrency                                        [pdf][pdf13]  [hs][lhs13] [html][lec13]
   *2/24*     Lambda Calculus
   *2/26*     Hindley-Milner
    *3/3*     Refinement Types 
@@ -47,13 +46,14 @@ title: Lectures
 [lec10]: lectures/lec-quickcheck.html
 [lhs10]: lectures/lec-quickcheck.lhs
 
+[pdf13]: static/lec-stm-2x2.pdf
+[lec13]: lectures/lec-stm.html
+[lhs13]: lectures/lec-stm.lhs
+
 <!--
 [lec11]: lectures/lec-transformers.html
 [lhs11]: lectures/lec-transformers.lhs
 
-[lec13]: static/lec-stm-2x2.pdf
-[htm13]: lectures/lec-stm.html
-[lhs13]: lectures/lec-stm.lhs
 
 [lec14]: static/lec-lambda-2x2.pdf
 [lec15]: lectures/lec-inference.html

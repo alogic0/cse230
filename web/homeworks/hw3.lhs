@@ -41,181 +41,147 @@ questions about the assignment, post to Piazza.
 
 > quickCheckN n = quickCheckWith $ stdArgs { maxSuccess = n}
 
-Problem 1: An Interpreter for WHILE++ 
-=====================================
+Problem 0: All About You
+========================
 
-Previously, you wrote a simple interpreter for *WHILE*.
-For this problem, you will use monad transformers to build
-an evaluator for *WHILE++* which, adds exceptions and I/O 
-to the original language.
+Tell us your name, email and student ID, by replacing the respective
+strings below
 
-As before, we have variables, and expressions.
+> myName  = "Write Your Name  Here"
+> myEmail = "Write Your Email Here"
+> mySID   = "Write Your SID   Here"
 
-> type Variable = String
-> type Store    = Map Variable Value
+Problem 1: Binary Search Trees Revisited 
+========================================
+
+Recall the old type of binary search trees from
+[HW2](/homeworks/Hw2.html).
+
+> data BST k v = Emp 
+>              | Bind k v (BST k v) (BST k v) 
+>              deriving (Show)
+> 
+> toBinds ::  BST t t1 -> [(t, t1)]
+> toBinds Emp            = []
+> toBinds (Bind k v l r) = toBinds l ++ [(k,v)] ++ toBinds r
+
+The following function tests whether a tree satisfies the 
+binary-search-order invariant.
+
+> isBSO ::  Ord a => BST a b -> Bool
+> isBSO Emp            = True
+> isBSO (Bind k v l r) = all (< k) lks && all (k <) rks && isBSO l && isBSO r
+>   where lks = map fst $ toBinds l
+>         rks = map fst $ toBinds r
+
+Finally, to test your implementation, we will define a 
+type of operations over trees
+
+> data BSTop k v = BSTadd k v | BSTdel k 
+>                  deriving (Eq, Show)
+
+and a function that constructs a tree from a sequence of operations
+
+> ofBSTops ::  Ord k => [BSTop k v] -> BST k v
+> ofBSTops    = foldr doOp Emp
+>   where doOp (BSTadd k v) = bstInsert k v 
+>         doOp (BSTdel k)   = bstDelete k 
+
+and that constructs a reference `Map` from a sequence of operations
+
+> mapOfBSTops ::  Ord k => [BSTop k a] -> Map.Map k a
+> mapOfBSTops = foldr doOp Map.empty 
+>   where doOp (BSTadd k v) = Map.insert k v
+>         doOp (BSTdel k)   = Map.delete k
+
+and functions that generate an arbitrary BST operations
+
+> keys :: [Int] 
+> keys = [0..10]
 >
-> data Value =
->     IntVal Int
->   | BoolVal Bool
->   deriving (Show)
+> genBSTadd, genBSTdel, genBSTop ::  Gen (BSTop Int Char)
+> genBSTadd = liftM2 BSTadd (elements keys) (elements ['a'..'z'])
+> genBSTdel = liftM BSTdel (elements keys)
+> genBSTop  = frequency [(5, genBSTadd), (1, genBSTdel)] 
+
+(a) Insertion
+-------------
+
+Write an insertion function 
+
+> bstInsert :: (Ord k) => k -> v -> BST k v -> BST k v
+> bstInsert = error "TBD"
+
+such that `bstInsert k v t` inserts a key `k` with value 
+`v` into the tree `t`. If `k` already exists in the input
+tree, then its value should be *replaced* with `v`. When you 
+are done, your code should satisfy the following QC properties.
+
+> prop_insert_bso :: Property
+> prop_insert_bso = forAll (listOf genBSTadd) $ \ops -> 
+>                     isBSO (ofBSTops ops)
 >
-> data Expression =
->     Var Variable
->   | Val Value  
->   | Op  Bop Expression Expression
->   deriving (Show)
->
-> data Bop = 
->     Plus     
->   | Minus    
->   | Times    
->   | Divide   
->   | Gt        
->   | Ge       
->   | Lt       
->   | Le       
->   deriving (Show)
+> prop_insert_map = forAll (listOf genBSTadd) $ \ops -> 
+>                     toBinds (ofBSTops ops) == Map.toAscList (mapOfBSTops ops)
 
-Programs in the language are simply values of the type
-
-> data Statement =
->     Assign Variable Expression          
->   | If Expression Statement Statement
->   | While Expression Statement       
->   | Sequence Statement Statement        
->   | Skip
->   | Print String Expression
->   | Throw Expression
->   | Try Statement Variable Statement
->   deriving (Show)
-
-The only new constructs are the `Print`, `Throw` and the `Try` statements. 
-
-- `Print s e` should print out (eg to stdout) log the string corresponding 
-  to the string `s` followed by whatever `e` evaluates to, followed by a
-  newline --- for example, `Print "Three: " (IntVal 3)' should display
-  "Three: IntVal 3\n",
-
-- `Throw e` evaluates the expression `e` and throws it as an exception, and
-
-- `Try s x h` executes the statement `s` and if in the course of
-  execution, an exception is thrown, then the exception comes shooting 
-  up and is assigned to the variable `x` after which the *handler*
-  statement `h` is executed.
-
-We will use the `State` [monad][2] to represent the world-transformer.
-Intuitively, `State s a` is equivalent to the world-transformer 
-`s -> (a, s)`. See the above documentation for more details. 
-You can ignore the bits about `StateT` for now.
-
-Use monad transformers to write a function
-
-> evalS :: (MonadState Store m, MonadError Value m, MonadWriter String m) => Statement -> m ()
-> evalS = error "TODO"
-
-and use the above function to implement a second function
-
-> execute :: Store -> Statement -> (Store, Maybe Value, String)
-> execute = error "TODO"
-
-such that `execute st s` returns a triple `(st', exn, log)` where 
-
-- `st'` is the output state, 
-- `exn` is possibly an exception (if the program terminates with an uncaught exception), 
-- `log` is the log of messages generated by the `Print` statements.
-
-Requirements
+(b) Deletion
 ------------
 
-In the case of exceptional termination, the `st'` should be the state *at
-the point where the last exception was thrown, and `log` should include all
-the messages *upto* that point -- make sure you stack your transformers
-appropriately! 
+Write a deletion function for BSTs of this type:
 
-- Reading an undefined variable should raise an exception carrying the value `IntVal 0`.
+> bstDelete :: (Ord k) => k -> BST k v -> BST k v
+> bstDelete k t = error "TBD"
 
-- Division by zero should raise an exception carrying the value `IntVal 1`.
+such that `bstDelete k t` removes the key `k` from the tree `t`. 
+If `k` is absent from the input tree, then the tree is returned 
+unchanged as the output. When you are done, your code should 
+satisfy the following QC properties.
 
-- A run-time type error (addition of an integer to a boolean, comparison of
-  two values of different types) should raise an exception carrying the value
-  `IntVal 2`.
+> prop_delete_bso :: Property
+> prop_delete_bso = forAll (listOf genBSTop) $ \ops -> 
+>                     isBSO (ofBSTops ops)
+>
+> prop_delete_map = forAll (listOf genBSTop) $ \ops -> 
+>                     toBinds (ofBSTops ops) == Map.toAscList (mapOfBSTops ops)
 
-Example 1
----------
 
-If `st` is the empty state (all variables undefined) and `s` is the program
+(c) Balanced Trees  
+------------------
 
-~~~~~{.haskell}
-X := 0 ;
-Y := 1 ;
-print "hello world: " X;
-if X < Y then
-  throw (X+Y)
-else 
-  skip
-endif;
-Z := 3 
-~~~~~
+The following function determines the `height` of a BST 
 
-then `execute st s` should return the triple 
+> height (Bind _ _ l r) = 1 + max (height l) (height r)
+> height Emp            = 0
 
-~~~~~{.haskell}
-(fromList [("X", IntVal 0), ("Y",  IntVal 1)], Just (IntVal 1), "hello world: IntVal 0\n")
-~~~~~
+We say that a tree is *balanced* if 
 
-The program is provided as a Haskell value below:
+> isBal (Bind _ _ l r) = isBal l && isBal r && abs (height l - height r) <= 2
+> isBal Emp            = True
 
-> mksequence = foldr Sequence Skip
+Write a balanced tree generator 
 
-> testprog1 = mksequence [Assign "X" $ Val $ IntVal 0,
->                         Assign "Y" $ Val $ IntVal 1,
->                         Print "hello world: " $ Var "X",
->                         If (Op Lt (Var "X") (Var "Y")) (Throw (Op Plus (Var "X") (Var "Y")))
->                                                        Skip,
->                         Assign "Z" $ Val $ IntVal 3]
+> genBal :: Gen (BST Int Char)
+> genBal = error "TBD"
 
-Example 2
----------
+such that
 
-If `st` is the empty state (all variables undefined) and `s` is the program
+> prop_genBal = forAll genBal isBal
 
-~~~~~{.haskell}
-X := 0 ;
-Y := 1 ;
-try  
-  if X < Y then
-    A := 100;
-    throw (X+Y);
-    B := 200
-  else 
-    skip
-  endif;
-catch E with
-  Z := E + A
-endwith
-~~~~~
+(d) Height Balancing (** Hard **) 
+---------------------------------
 
-then `execute st s` should return the triple 
+Rig it so that your insert and delete functions *also*
+create balanced trees. That is, they satisfy the properties
 
-~~~~~{.haskell}
-( fromList [("A", IntVal 100), ("E", IntVal 1)
-           ,("X", IntVal 0), ("Y", IntVal 1)
- 	   ,("Z", IntVal 101)]
-, Nothing 
-, "")
-~~~~~
+> prop_insert_bal ::  Property
+> prop_insert_bal = forAll (listOf genBSTadd) $ isBal . ofBSTops 
+>
+> prop_delete_bal ::  Property
+> prop_delete_bal = forAll (listOf genBSTop) $ isBal . ofBSTops
 
-Again, the program as a Haskell value:
 
-> testprog2 = mksequence [Assign "X" $ Val $ IntVal 0,
->                         Assign "Y" $ Val $ IntVal 1,
->                         Try (If (Op Lt (Var "X") (Var "Y"))
->                                 (mksequence [Assign "A" $ Val $ IntVal 100,
->                                              Throw (Op Plus (Var "X") (Var "Y")),
->                                              Assign "B" $ Val $ IntVal 200])
->                                 Skip)
->                             "E"
->                             (Assign "Z" $ Op Plus (Var "E") (Var "A"))]
+
+
 
 
 Problem 2: Circuit Testing
