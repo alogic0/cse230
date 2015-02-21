@@ -1,0 +1,10 @@
+A := 15;
+B := 21;
+while B > 0 do
+  if A > B then
+    A := A - B
+  else
+    B := B - A
+  endif
+endwhile;
+G := A

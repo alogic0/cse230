@@ -19,11 +19,11 @@ $ cabal install OpenGL
 $ cabal install GLFW 
 ~~~~~
 
-3. Grab [SOE](/static/SOE-CSE230-wi13.tgz)
+3. Grab [SOE](/static/SOE-cse230.tar.gz)
 
 ~~~~~
-$ wget http://cseweb.ucsd.edu/classes/wi13/cse230-a/static/SOE-CSE230-wi13.tgz
-$ tar -zxvf SOE-CSE230-wi13.tgz
+$ wget http://cseweb.ucsd.edu/classes/wi13/cse230-a/static/SOE-cse230.tar.gz
+$ tar -zxvf SOE-cse230.tar.gz
 ~~~~~
 
 4. To test your install, grab [soe-test.hs](/static/soe-test.hs) and build with the extended *search path* 

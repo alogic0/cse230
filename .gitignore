@@ -1,0 +1,6 @@
+grading/studentfiles
+*.hi
+*.o
+*~
+*.swp
+.liquid
