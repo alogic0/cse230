@@ -1,5 +1,5 @@
 ---
-title: Homework #3, Due Friday, March 7th 
+title: Homework #3, Due Monday, March 2nd (23:59:59 PST) 
 ---
 
 Preliminaries
