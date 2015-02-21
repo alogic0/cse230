@@ -10,7 +10,6 @@ Before starting this part of the assignment,
 1. Install the following packages 
 
 ~~~~~{.haskell}
-$ cabal install mtl
 $ cabal install quickcheck
 ~~~~~
 
