@@ -85,8 +85,8 @@ grader = do
 
   --- Arbitrary Balanced Tree Generation
   gradeQC "arbitrary balanced trees are in fact balanced" prop_genBal 2
-  gradeQC "arbitrary balanced trees are also BSO" prop_genBal 2
-  
+  gradeQC "arbitrary balanced trees are also BSO" prop_genBalBSO 2
+
   --- Maintaining Balance Through Insert
   gradeQC "insertion maintains balance" prop_insert_bal 5
 
@@ -94,26 +94,26 @@ grader = do
   gradeQC "deletion maintains balance" prop_delete_bal 5
 
 
-  -- Circuits (12 points)
+  -- Circuits (24 points)
   -- --------
   -- We don't have hooks into the properties --- they're hard-coded to check the functions
   -- that the students wrote --- so I'm not going to grade them. Instead, I've distributed
   -- the points I would've allocated into these over the implementations of the circuits
   -- themselves.
   --
-  -- Bitsubtractor property (1 point each)
+  -- Bitsubtractor property (4 point each)
   --   - affirms 0 - 1 = 0 is correct
   --   - rejects 5 - 1 = 5
   --   - accepts 5 - 1 = 4
   --   - accepts 5 - 0 = 5
-  -- Bitsubtractor itself (2 points each)
+  -- Bitsubtractor itself (8 points each)
   --   + 0 - 1 = 0
   --   + 4 - 1 = 3
   --   + 5 - 0 = 5
-  -- Multiplier property (1 point each)
+  -- Multiplier property (4 point each)
   --   - affirms 2 * 5 = 10
   --   - rejects 2 * 5 = 9
-  -- Multiplier itself (2 points each)
+  -- Multiplier itself (8 points each)
   --   + 2 * 5  = 10
   --   + 0 * 12 = 0
   --   + 1 * 3  = 3
@@ -123,42 +123,42 @@ grader = do
         (const $ [])
         (==)
         (True, [])
-        2
+        4
 
   grade "bitSubtractor correctness"
         runBitSubtractor
         (const $ [True, True])
         (==)
         (True, [False, False, True])
-        2
+        4
 
   grade "bitSubtractor correctness"
         runBitSubtractor
         (const $ [False, False, True])
         (==)
         (False, [False, False, True])
-        2
+        4
 
   grade "multiplier correctness"
         runMultiplier
         (const $ [])
         (==)
         ([], [False, False, True, True])
-        2
+        4
 
   grade "multiplier correctness"
         runMultiplier
         (const $ [True, True])
         (==)
         ([True], [True, True])
-        2
+        4
 
   grade "multiplier correctness"
         runMultiplier
         (const $ [False, True, False, True])
         (==)
         ([False, True], [True, False, True])
-        2
+        4
 
   return ()
 

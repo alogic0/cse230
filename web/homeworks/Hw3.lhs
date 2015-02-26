@@ -27,6 +27,8 @@ questions about the assignment, post to Piazza.
 
 > {-# LANGUAGE TypeSynonymInstances, FlexibleContexts, NoMonomorphismRestriction, OverlappingInstances, FlexibleInstances #-}
 
+> module Hw3 where
+
 > import qualified Data.Map as Map
 
 > import Control.Monad.State
