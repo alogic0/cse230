@@ -145,10 +145,6 @@ Write a deletion function for BSTs of this type:
 > maxRight (H.Bind k v l r  )   = case maxRight r of
 >                                   Just (t, k', v') -> Just (H.Bind k v l t, k', v')
 
--- pmr: This final case seems like it would be ripe for dsolving.
---      In general, it would be cool to verify this deletion.
---      (Surely there were other BST deletions - how do they work?)
-
 > bstDeleteRaw :: (Ord k) => k -> H.BST k v -> H.BST k v
 > bstDeleteRaw k H.Emp                         = H.Emp
 > bstDeleteRaw k (H.Bind k' v l r) | k < k'    = H.Bind k' v (bstDeleteRaw k l) r
@@ -498,7 +494,7 @@ And we can specify the correctness of the adder circuit by
 Problem: Subtraction
 --------------------
 
-1. Using `prop_bitAdder_Correct` as a model, write a speciﬁcation for a
+1. Using `prop_bitAdder_Correct` as a model, write a specification for a
 single-bit subtraction function that takes as inputs a N-bit binary 
 number and a single bit to be subtracted from it and yields as
 outputs an N-bit binary number. Subtracting one from zero should
@@ -509,7 +505,7 @@ yield zero.
 >   binary (sampleN sum) == max 0 (binary xs - binary (sample1 bin))
 >   where (sum,bout) = bitSubtractor (bin, map lift0 xs)
 
-2. Using the `bitAdder` circuit as a model, deﬁne a `bitSubtractor` 
+2. Using the `bitAdder` circuit as a model, define a `bitSubtractor` 
 circuit that implements this functionality and use QC to check that 
 your behaves correctly.
 
@@ -531,7 +527,7 @@ your behaves correctly.
 Problem: Multiplication
 -----------------------
 
-3. Using `prop_Adder_Correct` as a model, write down a QC speciﬁcation 
+3. Using `prop_Adder_Correct` as a model, write down a QC specification 
 for a `multiplier` circuit that takes two binary numbers of arbitrary 
 width as input and outputs their product.
 
@@ -539,8 +535,8 @@ width as input and outputs their product.
 > prop_Multiplier_Correct x y =
 >   (binary x * binary y) == (binary $ sampleN $ multiplier (map lift0 x, map lift0 y))
 
-4. Deﬁne a `multiplier` circuit and check that it satisﬁes your 
-speciﬁcation. (Looking at how adder is deﬁned will help with this, 
+4. Define a `multiplier` circuit and check that it satisfies your 
+specification. (Looking at how adder is defined will help with this, 
 but you’ll need a little more wiring. To get an idea of how the 
 recursive structure should work, think about how to multiply two 
 binary numbers on paper.)
