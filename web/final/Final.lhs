@@ -1,5 +1,5 @@
 ---
-title: Final, Due Thu 3/20 (APIA Time)
+title: Final, Due Fri 3/20 (23:59:59 Pacific)
 ---
 
 \begin{code} 
