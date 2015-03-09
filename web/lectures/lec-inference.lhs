@@ -14,14 +14,12 @@ title: Type Inference
 > import Control.Monad.State
 > import qualified Text.PrettyPrint as PP
 
-
-
-
-
 In this lecture, we will formalize the [Hindley-Milner][Damas82] 
 [type inference][Milner78] algorithm, a function of whose type is 
 
-> typeInference :: TypeEnv -> Exp -> Either String Type
+~~~~~{.haskell}
+typeInference :: TypeEnv -> Exp -> Either String Type
+~~~~~
 
 That is, the function takes as input a type-environment containing the
 types for variables (think "symbol table"), an expression whose type is
@@ -44,64 +42,68 @@ informally figure out how we can infer their types *automatically*.
 ~~~~~{.haskell}
 -- Example 1
 pos = \x -> if ((gtI x) 0) then True else False
+ 
+TPOS := TX -> TBODY = Int -> Bool 
+Bool := TBODY
+Bool := TBODY := Bool
+TCOND := Bool
+gtI   := Int -> (Int -> Bool)
+TX    := Int 
 ~~~~~
-
-x :: TX     // TX := Int
-pos :: Int -> Bool 
-
-
 
 ~~~~~{.haskell}
 -- Example 2
 id  = \x -> x 
+
+TID   := TX -> TBODY = forall a. a -> a
+BODY := TX 
+
 ~~~~~
-
-x :: TX
-id :: forall a. a -> a
-
 
 ~~~~~{.haskell}
 -- Example 3
 goo = \x -> (\y -> x) 
+
+TGOO := TX -> TBODY   = forall a, b. a -> b -> a  
+
+TBODY := TY -> TBODY' = TY -> TX
+TBODY' := TX
+
 ~~~~~
-
-
-x :: TX
-y :: TY
-goo :: forall TX, TY. TX -> TY -> TX
-
-
 
 ~~~~~{.haskell}
 -- Example 4
 compose = \f -> \g -> \x -> f (g x)) 
+
+TCOMP := TF -> TG -> TX -> TBODY
+       = forall a b c. (b -> c) -> (a -> b) -> a -> c 
+
+TG    := TGi -> TGo = TX -> TGo 
+TGi   := TX 
+TF    := TFi -> TFo = TGo -> TBODY 
+TFi   := TGo
+TFo   := TBODY
+
 ~~~~~
-
-f :: TF     // TF  := TFi -> TFo
-g :: TG     // TG  := TGi -> TGo
-x :: TX 
-            // TX  := TGi
-            // TFi := TGo
-  
-  forall a b c. (b -> c) -> (a -> b) -> a -> c 
-
-
 
 ~~~~~{.haskell}
 -- Example 5
-max = \x -> \y -> if gtA x y then x else y
+max = \x -> \y -> ite (gtA x y) x y
+
+
+ite :: Bool -> BRANCH -> BRANCH -> BRANCH
+
+ite :: forall a. Bool -> a -> a -> a
+gtA :: forall a. a -> a -> Bool
+gtA :: TTHING -> TTHING -> Bool
+
+TMAX := forall TTHING. TTHING -> TTHING -> TTHING
+  
+TX   := TBRANCH
+TY   := TBRANCH
+
+TBODY := TTHING
 ~~~~~
-
-gtA :: forall A, B.  A -> B -> Bool
-
-gtA :: ALICE -> BOB -> Bool
-
-x :: TX // TX := ALICE 
-y :: TY // TY := BOB
-           ALICE := BOB
-
-BOB-> TY -> BOB
-
 
 
 Preliminaries
@@ -119,11 +121,11 @@ Expressions
 First, we define expressions, which is a direct translation
 of the different cases of lambda-calculus expressions.
 
-> data Exp     =  EVar EVar 
->              |  ELit Lit
->              |  EApp Exp Exp
->              |  EAbs EVar Exp
->              |  ELet EVar Exp Exp
+> data Exp     =  EVar EVar            -- x 
+>              |  ELit Lit             -- 0,1,2,true,false
+>              |  EApp Exp Exp         -- e1 e2
+>              |  EAbs EVar Exp        -- \x -> e
+>              |  ELet EVar Exp Exp    -- let x = e1 in e2
 >              deriving (Eq, Ord)
 
 We use a wrapped variant of `String` to represent *program* 
@@ -145,15 +147,15 @@ Next, we define the different types for our language.
 In essence, a type is either a base type `TInt` or `TBool`, 
 or function types denoted by `TArr` or a type variables `TVar`.
 
-> data Type    =  TVar TVar 
->              |  TInt
->              |  TBool
->              |  Type `TArr` Type
+> data Type    =  TVar TVar        -- a  
+>              |  TInt             -- Int
+>              |  TBool            -- Bool
+>              |  TArr Type Type   -- t1 -> t2
 >              deriving (Eq, Ord)
 >
 > newtype TVar = TV String deriving (Eq, Ord)
 >
-> data Scheme  =  Forall [TVar] Type
+> data Scheme  =  Forall [TVar] Type       -- forall a. a -> a -> Bool
 
 In order to provide readable output and error messages, we define
 several pretty-printing functions for the abstract syntax, that are
@@ -322,7 +324,12 @@ number of times already!
 Here is the unification function `mgu` that takes two types as 
 input and either returns a successful unified output along with 
 the substitution (as shown in the table above) or an error string
-explaining the failure (hence, our use of an error monad to describe output.)
+explaining the failure (hence, our use of an error monad to
+describe output.)
+
+> mgu :: Type -> Type -> HM Subst 
+
+The `HM` monad is one that is like a `State + Error` monad. 
 
 > mgu (l `TArr` r) (l' `TArr` r')  = do  s1 <- mgu l l'
 >                                        s2 <- mgu (apply s1 r) (apply s1 r')
@@ -374,9 +381,10 @@ Here is the code for the `generalize` function which simply abstracts
 a type over all type variables which are free in the type but are not free
 (and hence, unconstrained) in the given type environment.
 
-> generalize        ::  TypeEnv -> Type -> Scheme
-> generalize env t  =   Forall as t
->   where as = Set.toList $ (freeTvars t) `Set.difference` (freeTvars env)
+> generalize :: TypeEnv -> Type -> Scheme
+> generalize env t  = Forall as t
+>   where
+>     as = Set.toList $ (freeTvars t) `Set.difference` (freeTvars env)
 
 The instantiation function replaces all bound type variables in a type
 scheme with *fresh* (and hence, unconstrained) type variables. Now this 
@@ -392,23 +400,32 @@ the number of previously generated variables.
 
 Now, the following action yields a *fresh* `Int`
 
-> fresh = do s     <- get
->            let n = count s
->            put   $ s { count = n + 1 }
->            return n
+> fresh :: HM Int
+> fresh = do
+>   s     <- get
+>   let n = count s
+>   put   $ s { count = n + 1 }
+>   return n
 
 and we use it to build a function that generates 
 a new type variable with a given `prefix`
 
-> freshTVar prefix = fresh >>= return . TVar . TV . (prefix ++) . show 
-
+> freshTVar :: String -> HM Type
+> freshTVar prefix = do
+>   i <- fresh
+>   return $ intTVar prefix i
+>
+> intTVar   :: String -> Int -> Type 
+> intTVar p = TVar . TV . (p ++) . show 
+  
 Now that we can generate fresh type variables, we can define the
 `instantiate` function as
 
-> instantiate (Forall as t) = do as' <- mapM (\ _ -> freshTVar "a") as 
->                                let s = Map.fromList $ zip as as'
->                                return $ apply s t
-
+> instantiate :: Scheme -> HM Type 
+> instantiate (Forall as t) = do
+>   as' <- mapM (\ _ -> freshTVar "a") as 
+>   let s = Map.fromList $ zip as as'
+>   return $ apply s t
 
 
 Several operations, for example type scheme instantiation, require
@@ -424,8 +441,7 @@ Main Type Inference Function
 Now, we are ready to pin down the type inference function `ti` which
 infers the types for expressions.  
 
-> ti ::  (MonadState TIState m, MonadError String m) => 
->        TypeEnv -> Exp -> m (Subst, Type)
+> ti :: TypeEnv -> Exp -> HM (Subst, Type)
 
 The function expects the precondition that the type environment
 *must* contain bindings for all free variables of the expressions.
@@ -486,8 +502,9 @@ bound to `x` when analyzing `e2`.
 Finally, we use the `ti` function (which returns a type inference action)
 to define the `typeInference` function promised at the beginning.
 
-> -- type TI a = ErrorT String (State TIState) a
+> type HM a = ErrorT String (State TIState) a
 
+> typeInference :: TypeEnv -> Exp -> Either String Type
 > typeInference env e = uncurry apply <$> res
 >   where act = ti env e
 >         res = evalState (runErrorT act) s0 

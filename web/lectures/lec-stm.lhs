@@ -181,7 +181,7 @@ data MVar a
 
 
 5. MVars: BankAccount/Deposit 
-=============================
+------------------------------
 
 Bank account revisited; using MVars, depositing with different
 threads, and fuzzed scheduler
@@ -225,11 +225,13 @@ main5 = do a <- newAccountMV 0
 \end{code}
 
 6. Asynchrony Via MVars
-=======================
+-----------------------
+
 
 Can implement "asynchronous" function calls 
 (aka "futures", "promises") using `MVar`s. 
-Other languages "features" are Haskell's, "functions"...
+Other languages "features" are Haskell's,
+"functions"...
    
 A type representing an Asynchronous Computation
 
@@ -292,7 +294,7 @@ timeDownload url = do (page, time) <- timeit $ getURL url
 Reading ALL the URLs **in sequence** (i.e. a single thread) with `mapM`
 
 \begin{code}
-main6 = do (_ , time) <- timeit $ amapM timeDownload urls 
+main6 = do (_ , time) <- timeit $ mapM timeDownload urls 
            printf "TOTAL download time: %.2fs\n" time
 \end{code}
 
@@ -325,14 +327,16 @@ amapM f xs
 
 \end{code}
 
-Spawn-then-wait in parallel is a general pattern; lets **generalize** into `asyncMapM`
+Spawn-then-wait in parallel is a general pattern;
+lets **generalize** into `asyncMapM`
 
 \begin{code}
 asyncMapM :: (a -> IO b) -> [a] -> IO [b]
 asyncMapM f xs = mapM (async . f) xs >>= mapM wait
 \end{code}
 
-**Note:** *Exact* type as `mapM` -- so you can literally just drop-in replace to get parallelism.
+**Note:** *Exact* type as `mapM` -- so you can
+literally just drop-in replace to get parallelism.
 
 Reading ALL URLs with `asyncMapM`
 
@@ -343,23 +347,20 @@ main8 = do (_, time) <- timeit $ asyncMapM timeDownload urls
 
 
 7. Java-style Synchronization via MVars
-=======================================
+---------------------------------------
 
 Next, lets see how `MVars` give us Java style `synchronize`, 
 as a simple function, no need to extend the language.
 
 **Key idea:** Execute an action **while holding lock**
 
-MVars as Locks
---------------
+**MVars as Locks**
 
 \begin{code}
-
 type Lock = MVar () 
 \end{code}
 
-Acquiring Locks
----------------
+**Acquiring Locks**
 
 + Just **take** the `MVar`s contents! 
 + Subsequent calls to `acquire` will block...
@@ -370,8 +371,7 @@ acquire l = takeMVar l
 \end{code}
 
 
-Releasing Locks
----------------
+**Releasing Locks**
 
 + Just **put back** the `MVar`s contents!
 + Subsequent calls to `acquire` will now get unblocked...
@@ -381,13 +381,12 @@ release   :: MVar () -> IO ()
 release l = putMVar l () 
 \end{code}
 
-Synchronized "Blocks"
----------------------
+**Synchronized "Blocks"**
 
 Now, a Java style `synchronize` block 
 
 ```Java
-synchronized (lock) {
+synchronized (l) {
   statement
 }
 ```
@@ -406,7 +405,7 @@ synchronize l act = do acquire l
 
 
 8. "Synchronized" Bank Accounts
-===============================
+-------------------------------
 
 
 A `synchronize`d deposit that prevents races...
@@ -435,7 +434,7 @@ forkMapM f xs = mapM_ (forkIO . f) xs
 
 
 9. GLOBAL Locks means Zero Concurrency 
-======================================
+--------------------------------------
 
 Pretty silly if the **entire** bank froze up to handle
 a **single** customer!
@@ -446,7 +445,7 @@ with explicit lock.
 
 \begin{code}
 data AccountL = AL { money :: IORef Int 
-                   , lock  :: MVar ()   
+                   , lock  :: Lock  
                    }
 \end{code}
 
@@ -488,7 +487,7 @@ main10 = do
 
 
 10. Transferring between accounts
-=================================
+---------------------------------
 
 \begin{code}
 transferL         ::  AccountL -> AccountL -> Int -> IO ()
@@ -506,12 +505,13 @@ syncTransfer a1 a2 n =
       transferL a1 a2 n
 \end{code}
 
+**EXERCISE: TRY GET A DEADLOCK**
 
 
 Can use a GLOBAL lock as in `main9` but zero concurrency ...
 
 11. STM: Software Transactions
-==============================
+------------------------------
 
  
 New type of trans-action
@@ -582,7 +582,7 @@ main11 = do a <- atomically $ newAccountT 0
 \end{code}
 
 Transactions Compose
-====================
+-------------------- 
 
 Trivial to compose actions without worrying about *deadlock* or *race*
 

@@ -599,7 +599,9 @@ instance Monad Maybe where
    -- (>>=)       :: Maybe a -> (a -> Maybe b) -> Maybe b
    Nothing  >>= _ =  Nothing
    (Just x) >>= f =  f x
+
 ~~~~~
+
 
 
 
@@ -773,6 +775,55 @@ to Haskell permitted the comprehension notation to be used
 with any monad.  For simplicity however, Haskell only allows
 the comprehension notation to be used with lists.
 
+**List Monad Example**
+
+
+~~~~~{.haskell}
+   -- (>>=)  :: [a] -> (a -> [b]) -> [b]
+   []         >>= _ = [] 
+   (x:xs)     >>= f = f x ++ (xs >>= f) 
+
+   [x1]       >>= f = f x1
+   [x1,x2]    >>= f = f x1 ++ f x2
+   [x1,x2,x3] >>= f = f x1 ++ f x2 ++ f x3
+~~~~~
+
+
+Lets define a function:
+
+~~~~~{.haskell}
+foo    :: [Int] -> [Char]
+foo xs = do x <- xs
+            show (x+1)
+~~~~~
+
+What happens when we run:
+
+~~~~~{.haskell}
+foo [11, 22, 33, 44]
+
+  = do x <- [11, 22, 33, 44]
+       show (x+1)
+
+  = [11,22,33,44] >>= (\x -> show (x+1))
+
+  =  (\x -> show (x+1)) 11
+  ++ (\x -> show (x+1)) 22 
+  ++ (\x -> show (x+1)) 33 
+  ++ (\x -> show (x+1)) 44 
+
+  =  (show (11+1)) 
+  ++ (show (22+1))  
+  ++ (show (33+1))  
+  ++ (show (44+1))  
+
+  =  (show 12) 
+  ++ (show 23)  
+  ++ (show 34)  
+  ++ (show 45)  
+
+  = "12233445"
+~~~~~
 
 Imperative Functional Programming
 =================================

@@ -13,10 +13,9 @@ title: Lectures
   *2/10*     Parser Combinators                                 [html][lec9]  [hs][lhs9] 
   *2/17*     Testing                                            [html][lec10] [hs][lhs10]
   *2/19*     Concurrency                                        [pdf][pdf13]  [hs][lhs13] [html][lec13]
-  *2/24*     Lambda Calculus
-  *2/26*     Hindley-Milner
-   *3/3*     Refinement Types 
-   *3/5*     (contd.)
+  *2/24*     Lambda Calculus                                    [pdf][pdf14]
+   *3/3*     Hindley-Milner                                     [html][lec15] [hs][lhs15]
+   *3/5*     Refinement Types                                   [html][lecLH] [pdf][pdfLH] [VM](https://piazza.com/class/i4kkvjdaoqj7aj?cid=11)
   *3/10*     (contd.)
   *3/12*     (contd.)
 
@@ -50,14 +49,18 @@ title: Lectures
 [lec13]: lectures/lec-stm.html
 [lhs13]: lectures/lec-stm.lhs
 
+[pdf14]: static/lec-lambda-2x2.pdf
+
+[lec15]: lectures/lec-inference.html
+[lhs15]: lectures/lec-inference.lhs
+
+[lecLH]: http://ucsd-progsys.github.io/liquidhaskell-tutorial/
+[pdfLH]: http://ucsd-progsys.github.io/liquidhaskell-tutorial/book.pdf
+
+
 <!--
 [lec11]: lectures/lec-transformers.html
 [lhs11]: lectures/lec-transformers.lhs
-
-
-[lec14]: static/lec-lambda-2x2.pdf
-[lec15]: lectures/lec-inference.html
-[lhs15]: lectures/lec-inference.lhs
 
 [lec5]: lectures/lec-animation.html
 [lhs5]: lectures/lec-animation.lhs

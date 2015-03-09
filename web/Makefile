@@ -28,7 +28,7 @@ update:
 	cp lectures/*.lhs _site/lectures/
 	cp -p -r slides _site/
 	cp homeworks/*.lhs _site/homeworks/
-  scp -r _site/* $(SITEUSER):$(SITEPATH)
+	scp -r _site/* $(SITEUSER):$(SITEPATH)
 	ssh $(SITEUSER) "chmod -R g+w $(SITEPATH) && chmod -R ugo+r $(SITEPATH)"
 
 slides:
