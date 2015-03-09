@@ -81,7 +81,7 @@ that the code is verified by LH:
 
 \begin{code}
 {-@ distance :: n:Nat -> Point -> Point -> Double @-}
-distance n px py = sqrt $ foldr (+) 0 $ zipWith (\x y -> x^2 - y^2) px py
+distance n px py = sqrt $ foldr (+) 0 $ zipWith (\x y -> (x-y)^2) px py
 \end{code}
 
 (b) Map Points To Nearest Center
