@@ -48,7 +48,7 @@ To complete this homework,
 + Please post questions to Piazza.
 
 
-Problem 0: Your Clicker ID
+Problem 0: Your Clicker ID 
 --------------------------
 
 To get your clicker points, please fill in your clicker ID below:
@@ -57,32 +57,32 @@ To get your clicker points, please fill in your clicker ID below:
 myClickerID = error "TBD" 
 \end{code}
 
-Problem 1: Concurrent FIFO
+Problem 1: Concurrent FIFO (30pts)
 --------------------------
 
 + [code](Fifo.lhs)
 + [html](Fifo.html)
 
-Problem 2: Type Inference
+Problem 2: Type Inference (30pts)
 --------------------------
 
 + [code](Inference.lhs)
 + [html](Inference.html)
 
 
-Problem 3: Refined Lists
+Problem 3: Refined Lists (20pts)
 ------------------------
 
 + [code](List.lhs)
 + [html](List.html)
 
-Problem 4: MapReduce 
+Problem 4: MapReduce (10pts)
 --------------------
 
 + [code](MapReduce.lhs)
 + [html](MapReduce.html)
 
-Problem 5: KMeans Clustering
+Problem 5: KMeans Clustering (10pts)
 ----------------------------
 
 + [code](KMeans.lhs)
