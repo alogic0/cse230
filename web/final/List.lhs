@@ -43,6 +43,7 @@ map       :: (a -> b) -> List a -> List b
 zipWith   :: (a -> b -> c) -> List a -> List b -> List c
 concat    :: List (List a) -> List a
 \end{code}
+</div>
 
 A Sized List Datatype
 ---------------------

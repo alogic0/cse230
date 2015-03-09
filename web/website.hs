@@ -10,7 +10,7 @@ copyDir = do route   idRoute
 
 main :: IO ()
 main = hakyll $ do
-    match "static/*"     copyDir 
+    match "static/*"     copyDir
     --match "static/pa1/*" copyDir
     --match "static/pa2/*" copyDir
     --match "static/pa3/*" copyDir
@@ -18,7 +18,7 @@ main = hakyll $ do
     --match "static/pa5/*" copyDir
     --match "static/pa6/*" copyDir
     --match "static/pa7/*" copyDir
-    
+
     match "css/*" $ do
         route   idRoute
         compile compressCssCompiler
@@ -27,6 +27,7 @@ main = hakyll $ do
     match "lectures/*"    $ myMakeHTML
     -- match "slides/*"      $ myMakeHTML
     match "homeworks/*"   $ myMakeHTML
+    match "final/*"       $ myMakeHTML
     match (fromList tops) $ myMakeHTML
 
 tops = [ "index.markdown"

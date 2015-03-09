@@ -1,6 +1,7 @@
 Map-Reduce
 ==========
 
+<div class="hidden">
 \begin{code}
 module MapReduce (mapReduce) where
 
@@ -11,6 +12,7 @@ expand   :: (a -> List (k, v)) -> List a -> List (k, v)
 group    :: (Ord k) => List (k, v) -> M.Map k (List v)
 collapse :: (v -> v -> v) -> M.Map k (List v) -> M.Map k v
 \end{code}
+</div>
 
 The following is a super simplified implementation of
 [Map-Reduce](http://en.wikipedia.org/wiki/MapReduce)

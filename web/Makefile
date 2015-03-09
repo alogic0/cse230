@@ -13,7 +13,12 @@ pdfObjects  := $(patsubst lectures/%.lhs,pdf/%.pdf,$(wildcard lectures/*.lhs))
 
 all: website
 	./website rebuild
-
+	cp css/syntax-rj.css _site/css/syntax.css
+	cp lectures/*.lhs _site/lectures/
+	cp -p -r slides _site/
+	cp homeworks/*.lhs _site/homeworks/
+	cp final/*.lhs _site/final/
+	
 website: website.hs
 	ghc --make website
 
@@ -23,11 +28,7 @@ clean:
 rsync:
 	$(RSYNC) _site/ $(remoteuser) $(remotehost) $(remotedir)
 
-update:
-	cp css/syntax-rj.css _site/css/syntax.css
-	cp lectures/*.lhs _site/lectures/
-	cp -p -r slides _site/
-	cp homeworks/*.lhs _site/homeworks/
+update: build
 	scp -r _site/* $(SITEUSER):$(SITEPATH)
 	ssh $(SITEUSER) "chmod -R g+w $(SITEPATH) && chmod -R ugo+r $(SITEPATH)"
 
