@@ -16,10 +16,11 @@ cp $ASSNDIR/* $GRADEDIR
 
 GRADEFILE="$GRADEDIR/gradereport"
 
-ASSNFILE=$ASSNDIR/$ASSN.lhs
-if [ ! -e $ASSNFILE ]; then
-   ASSNFILE=$ASSNDIR/$ASSN.hs
-fi
+#ASSNFILE=$ASSNDIR/$ASSN.lhs
+#if [ ! -e $ASSNFILE ]; then
+#   ASSNFILE=$ASSNDIR/$ASSN.hs
+#fi
+ASSNFILE=`find $ASSNDIR -maxdepth 1 -iname "$ASSN.*" | tail -1`
 
 SOLNFILE=$ASSN/Solution.lhs
 if [ ! -e $SOLNFILE ]; then
@@ -29,7 +30,7 @@ fi
 GRADEFILE="$GRADEDIR/gradereport"
 
 (echo "Grading $ASSN for $STUDENT" &&
-ghc -iSOE/src:$ASSN -odir $GRADEDIR -o $GRADEDIR/grade$ASSN --make $ASSN/grade$ASSN.hs grade.hs $ASSNFILE $SOLNFILE 2>&1 &&
+ghc -iSOE/src:$ASSN -odir $GRADEDIR -o $GRADEDIR/grade$ASSN --make $ASSN/grade$ASSN.hs Grade.hs $ASSNFILE $SOLNFILE 2>&1 &&
 $GRADEDIR/grade$ASSN
 ) | tee $GRADEFILE
 
