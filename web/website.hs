@@ -27,7 +27,7 @@ main = hakyll $ do
     match "lectures/*"    $ myMakeHTML
     -- match "slides/*"      $ myMakeHTML
     match "homeworks/*"   $ myMakeHTML
-    match "final/*"       $ myMakeHTML
+    match "final/*.lhs"       $ myMakeHTML
     match (fromList tops) $ myMakeHTML
 
 tops = [ "index.markdown"
